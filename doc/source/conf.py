@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'ADRF Metabase'
-copyright = '2019, Molly Rossow and Shen Han'
+copyright = '2019, Chapin Hall'
 author = 'Molly Rossow and Shen Han'
 
 # The short X.Y version
@@ -42,7 +42,13 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.githubpages',
+    'sphinx.ext.napoleon'
 ]
+
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+napoleon_use_param = False
+napoleon_use_rtype = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

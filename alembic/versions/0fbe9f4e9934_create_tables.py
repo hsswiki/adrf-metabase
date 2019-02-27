@@ -91,6 +91,25 @@ def upgrade():
     )
 
     op.create_table(
+        'data_collection',
+        sa.Column('data_collection_id', sa.Integer, primary_key=True),
+        sa.Column('title', sa.Text),
+        sa.Column('description', sa.Text),
+        sa.Column('created_by', sa.Text),
+        sa.Column('date_created', sa.TIMESTAMP),
+        sa.Column('updated_by', sa.Text),
+        sa.Column('date_last_updated', sa.TIMESTAMP),
+        schema=SCHEMA_NAME
+    )
+
+    op.create_table(
+        'data_collection_member',
+        sa.Column('data_collection_id', sa.Integer),
+        sa.Column('data_set_id', sa.Integer),
+        schema=SCHEMA_NAME
+    )
+
+    op.create_table(
         'data_set_request',
         sa.Column('request_id', sa.Integer),
         sa.Column('data_set_id', sa.Integer),
@@ -379,6 +398,36 @@ def upgrade():
         source_schema=SCHEMA_NAME,
         referent_schema=SCHEMA_NAME,
     )
+
+    # Create composite key on data_collection_member.
+    op.create_primary_key(
+        'data_collection_member_pk',
+        'data_collection_member',
+        ['data_collection_id', 'data_set_id'],
+        schema=SCHEMA_NAME,
+    )
+
+    # Create foreign keys on data_collection_member.
+    op.create_foreign_key(
+        'data_collection_member_data_collection_fk',
+        'data_collection_member',
+        'data_collection',
+        ['data_collection_id'],
+        ['data_collection_id'],
+        source_schema=SCHEMA_NAME,
+        referent_schema=SCHEMA_NAME,
+    )
+
+    op.create_foreign_key(
+        'data_collection_member_data_set_fk',
+        'data_collection_member',
+        'data_set',
+        ['data_set_id'],
+        ['data_set_id'],
+        source_schema=SCHEMA_NAME,
+        referent_schema=SCHEMA_NAME,
+    )
+
 
     # Create foreign keys on data_receipt.
     op.create_foreign_key(
@@ -692,6 +741,18 @@ def downgrade():
     )
 
     op.drop_constraint(
+        'data_collection_member_data_collection_fk',
+        'data_collection_member',
+        schema=SCHEMA_NAME
+    )
+
+    op.drop_constraint(
+        'data_collection_member_data_set_fk',
+        'data_collection_member',
+        schema=SCHEMA_NAME
+    )
+
+    op.drop_constraint(
         'data_receipt_data_request_fk',
         'data_receipt',
         schema=SCHEMA_NAME,
@@ -799,6 +860,8 @@ def downgrade():
     op.drop_table('data_source', schema=SCHEMA_NAME)
     op.drop_table('data_receipt', schema=SCHEMA_NAME)
     op.drop_table('data_set', schema=SCHEMA_NAME)
+    op.drop_table('data_collection', schema=SCHEMA_NAME)
+    op.drop_table('data_collection_member', schema=SCHEMA_NAME)
     op.drop_table('data_set_request', schema=SCHEMA_NAME)
     op.drop_table('data_table', schema=SCHEMA_NAME)
     op.drop_table('etl_input', schema=SCHEMA_NAME)

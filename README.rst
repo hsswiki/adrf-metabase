@@ -4,7 +4,8 @@ ADRF Metabase
 
 Tools for handling metadata associated with administrative data sets.
 
-The current version of this repo contains scripts for creating the Metabase tabels.
+The current version of this repo contains scripts for creating the Metabase
+tabels.
 
 --------------
 Requirements
@@ -28,6 +29,20 @@ Create schema `metabase`
 Run migration script
 ------------------------
 
-Currently there is only one version of the database. You can create all the tables by running:
+Currently there is only one version of the database. You can create all the
+tables by running:
 
 ``alembic upgrade head``
+
+-----------
+Run Tests
+-----------
+
+Tests require
+(testing.postgresql)[https://github.com/tk0miya/testing.postgresql]
+
+``pip install testing.postgresql``
+
+Run tests with
+
+``python -m unittest tests.extract_metadata_test``

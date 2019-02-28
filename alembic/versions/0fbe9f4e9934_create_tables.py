@@ -15,7 +15,7 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-SCHEMA_NAME= 'metabase'
+SCHEMA_NAME = 'metabase'
 
 
 def upgrade():
@@ -428,7 +428,6 @@ def upgrade():
         referent_schema=SCHEMA_NAME,
     )
 
-
     # Create foreign keys on data_receipt.
     op.create_foreign_key(
         'data_receipt_data_request_fk',
@@ -614,7 +613,6 @@ def upgrade():
         source_schema=SCHEMA_NAME,
         referent_schema=SCHEMA_NAME,
     )
-
 
     # Create keys on data_dictionary.
     op.create_primary_key(
@@ -853,7 +851,6 @@ def downgrade():
         'codebook',
         schema=SCHEMA_NAME,
     )
-
 
     op.drop_table('data_request', schema=SCHEMA_NAME)
     op.drop_table('contact_history', schema=SCHEMA_NAME)

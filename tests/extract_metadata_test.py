@@ -3,6 +3,9 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+import alembic.config
+from alembic.config import Config
+import sqlalchemy
 import testing.postgresql
 
 from metabase import extract_metadata
@@ -11,12 +14,13 @@ from metabase import extract_metadata
 class ExtractMetaDataTest(unittest.TestCase):
     '''Test for extract_metadata'''
 
-    def setUp(self):
-        '''Create fixtures.'''
+    @classmethod
+    def setUpClass(cls):
+        '''Create database fixtures.'''
 
         # Create temporary database for testing.
-        self.postgresql = testing.postgresql.Postgresql()
-        connection_params = self.postgresql.dsn()
+        cls.postgresql = testing.postgresql.Postgresql()
+        connection_params = cls.postgresql.dsn()
 
         # Create connection string from params.
         conn_str = 'postgresql://{user}@{host}:{port}/{database}'.format(
@@ -25,7 +29,17 @@ class ExtractMetaDataTest(unittest.TestCase):
             port=connection_params['port'],
             database=connection_params['database'],
             )
-        self.connection_string = conn_str
+        cls.connection_string = conn_str
+
+        # Create metabase schema.
+        engine = sqlalchemy.create_engine(conn_str)
+        engine.execute(sqlalchemy.schema.CreateSchema('metabase'))
+
+        # Run alembic scripts to create database tables.
+        alembic_cfg = Config()
+        alembic_cfg.set_main_option('script_location', 'alembic')
+        alembic_cfg.set_main_option('sqlalchemy.url', conn_str)
+        alembic.command.upgrade(alembic_cfg, 'head')
 
         # Mock settings to connec to testing database. Use this database for
         # both the metabase and the data database.
@@ -35,7 +49,10 @@ class ExtractMetaDataTest(unittest.TestCase):
 
         with patch('metabase.extract_metadata.settings', mock_params):
             extract = extract_metadata.ExtractMetaData(data_table_id=1)
-            self.extract = extract
+            cls.extract = extract
+
+        # Create data schema and tables.
+        engine.execute(sqlalchemy.schema.CreateSchema('data'))
 
     def tearDown(self):
         """Delete temporary database."""

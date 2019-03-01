@@ -20,7 +20,7 @@ class ExtractMetaData():
         self.metabase_engine = sqlalchemy.create_engine(
             settings.metabase_connection_string
             )
-        self.data_engin = sqlalchemy.create_engine(
+        self.data_engine = sqlalchemy.create_engine(
             settings.data_connection_string
             )
         self.schema_name, self.table_name = self.__get_table_name()

@@ -38,8 +38,7 @@ tables by running:
 Run Tests
 -----------
 
-Tests require
-[testing.postgresql](https://github.com/tk0miya/testing.postgresql)
+Tests require `testing.postgresql <https://github.com/tk0miya/testing.postgresql>`_.
 
 ``pip install testing.postgresql``
 

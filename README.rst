@@ -39,10 +39,10 @@ Run Tests
 -----------
 
 Tests require
-(testing.postgresql)[https://github.com/tk0miya/testing.postgresql]
+[testing.postgresql](https://github.com/tk0miya/testing.postgresql)
 
 ``pip install testing.postgresql``
 
-Run tests with
+Run tests with the following command under the root directory of the project
 
-``python -m unittest tests.extract_metadata_test``
+``pytest tests/``

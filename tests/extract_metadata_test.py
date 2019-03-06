@@ -43,16 +43,6 @@ class ExtractMetadataTest(unittest.TestCase):
         alembic_cfg.set_main_option('sqlalchemy.url', conn_str)
         alembic.command.upgrade(alembic_cfg, 'head')
 
-        # Mock settings to connect to testing database. Use this database for
-        # both the metabase and the data database.
-        mock_params = MagicMock()
-        mock_params.metabase_connection_string = conn_str
-        mock_params.data_connection_string = conn_str
-
-        with patch('metabase.extract_metadata.settings', mock_params):
-            extract = extract_metadata.ExtractMetadata(data_table_id=1)
-            cls.extract = extract
-
         # Create data schema and tables.
         engine.execute(sqlalchemy.schema.CreateSchema('data'))
         engine.execute('create table data.numeric_1 '
@@ -65,6 +55,17 @@ class ExtractMetadataTest(unittest.TestCase):
         engine.execute("""insert into metabase.data_table
                           (data_table_id, file_table_name)
                           values (1, 'data.numeric_1')""")
+
+        # Mock settings to connect to testing database. Use this database for
+        # both the metabase and the data database.
+        mock_params = MagicMock()
+        mock_params.metabase_connection_string = conn_str
+        mock_params.data_connection_string = conn_str
+
+        with patch('metabase.extract_metadata.settings', mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+            cls.extract = extract
+
         # Generate mapped classes from database.
         Base = automap_base(
             bind=engine,
@@ -107,4 +108,7 @@ class ExtractMetadataTest(unittest.TestCase):
         self.assertEqual(123, result[0][0])
 
     def test_get_table_name(self):
-        self.assertEqual(1, self.extract.schema_name)
+        self.assertEqual(
+            ('data', 'numeric_1'), 
+            (self.extract.schema_name, self.extract.table_name),
+        )

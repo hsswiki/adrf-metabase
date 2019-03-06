@@ -78,17 +78,14 @@ class ExtractMetadata():
         result = conn.execute(
             """
             SELECT file_table_name
-            FROM metadata.data_table
-            WHERE data_table_id = 1;
-            """
-            # sqlalchemy.sql.expression.select(
-            #     columns=[sqlalchemy.text('file_table_name')],
-            #     from_obj=
-            # )
-        ).fetchall()[0]
+            FROM metabase.data_table
+            WHERE data_table_id = {data_table_id};
+            """.format(data_table_id=self.data_table_id)
+        ).fetchall()    # Return value is like `[('data.numeric_1',)]`
+        
+        schema_name, table_name = result[0][0].split('.')
 
-        # TODO
-        return (result, 2)  # ('', '')
+        return schema_name, table_name
 
     def __get_column_type(self, categorical_threshold):
         '''Identify or infer column type.

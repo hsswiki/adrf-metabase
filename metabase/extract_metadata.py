@@ -5,11 +5,11 @@ import sqlalchemy
 from . import settings
 
 
-class ExtractMetaData():
+class ExtractMetadata():
     '''Class to extract metadata from a Data Table.'''
 
     def __init__(self, data_table_id):
-        '''Set Data Table ID and connecto to database.
+        '''Set Data Table ID and connect to database.
 
         Args:
            data_table_id (int): ID associated with this Data Table.
@@ -25,19 +25,11 @@ class ExtractMetaData():
             )
         self.schema_name, self.table_name = self.__get_table_name()
 
-    def __get_table_name(self):
-        '''Return the the table schema and name using the Data Table ID.
+    def process_table(self, categorical_threshold=10):
+        '''Update the metabase with metadata from this Data Table.'''
 
-        Returns table name and schema name by looking up the Data Table ID in
-        the metabase. The table name and schema name will be used to query the
-        table itself.
-
-        Returns:
-            (str, str): (schema name, table name)
-
-       '''
-        # TODO
-        return ('', '')
+        self.get_table_level_metadata()
+        self.get_column_level_metadata(categorical_threshold)
 
     def get_table_level_metadata(self):
         '''Extract table level metadata and store it in the metabase.
@@ -51,7 +43,7 @@ class ExtractMetaData():
         # TODO
         pass
 
-    def get_column_level_metadata(self):
+    def get_column_level_metadata(self, categorical_threshold):
         '''Extract column level metadata and store it in the metabase.
 
         Process columns one by one, identify or infer type, update Column Info
@@ -59,7 +51,7 @@ class ExtractMetaData():
 
         '''
 
-        column_type = self.__get_column_type()
+        column_type = self.__get_column_type(categorical_threshold)
         if column_type == 'numeric':
             self.get_numeric_metadata()
         elif column_type == 'text':
@@ -71,7 +63,34 @@ class ExtractMetaData():
         else:
             raise ValueError('Unknow column type')
 
-    def __get_column_type(self):
+    def __get_table_name(self):
+        '''Return the the table schema and name using the Data Table ID.
+
+        Returns table name and schema name by looking up the Data Table ID in
+        the metabase. The table name and schema name will be used to query the
+        table itself.
+
+        Returns:
+            (str, str): (schema name, table name)
+
+        '''
+        conn = self.metabase_engine.connect()
+        result = conn.execute(
+            """
+            SELECT file_table_name
+            FROM metadata.data_table
+            WHERE data_table_id = 1;
+            """
+            # sqlalchemy.sql.expression.select(
+            #     columns=[sqlalchemy.text('file_table_name')],
+            #     from_obj=
+            # )
+        ).fetchall()[0]
+
+        # TODO
+        return (result, 2)  # ('', '')
+
+    def __get_column_type(self, categorical_threshold):
         '''Identify or infer column type.
 
         Uses the type set in the database if avaible. If all columns are text,
@@ -128,9 +147,3 @@ class ExtractMetaData():
 
         # TODO
         pass
-
-    def process_table(self):
-        '''Update the metabase with metadata from this Data Table.'''
-
-        self.get_table_level_metadata()
-        self.get_column_level_metadata()

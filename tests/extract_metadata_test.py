@@ -12,7 +12,7 @@ import testing.postgresql
 from metabase import extract_metadata
 
 
-class ExtractMetaDataTest(unittest.TestCase):
+class ExtractMetadataTest(unittest.TestCase):
     '''Test for extract_metadata'''
 
     @classmethod
@@ -43,14 +43,14 @@ class ExtractMetaDataTest(unittest.TestCase):
         alembic_cfg.set_main_option('sqlalchemy.url', conn_str)
         alembic.command.upgrade(alembic_cfg, 'head')
 
-        # Mock settings to connec to testing database. Use this database for
+        # Mock settings to connect to testing database. Use this database for
         # both the metabase and the data database.
         mock_params = MagicMock()
         mock_params.metabase_connection_string = conn_str
         mock_params.data_connection_string = conn_str
 
         with patch('metabase.extract_metadata.settings', mock_params):
-            extract = extract_metadata.ExtractMetaData(data_table_id=1)
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
             cls.extract = extract
 
         # Create data schema and tables.
@@ -79,7 +79,7 @@ class ExtractMetaDataTest(unittest.TestCase):
 
         self.postgresql.stop()
 
-    def test_process_empty_table(self):
+    def _test_process_empty_table(self):
         '''Right now, a call to process_table just raises an error.
 
         As the library develops, we should overwrite this test.
@@ -88,7 +88,7 @@ class ExtractMetaDataTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.extract.process_table()
 
-    def test_row_count(self):
+    def _test_row_count(self):
         '''Test that the row count is correct'''
 
         # TODO remove this line once the actual extract_metadata method is
@@ -105,3 +105,6 @@ class ExtractMetaDataTest(unittest.TestCase):
         conn = self.engine.connect()
         result = conn.execute(row_count).fetchall()
         self.assertEqual(123, result[0][0])
+
+    def test_get_table_name(self):
+        self.assertEqual(1, self.extract.schema_name)

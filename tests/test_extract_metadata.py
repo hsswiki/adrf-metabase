@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import alembic.config
 from alembic.config import Config
+import pytest
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 import testing.postgresql
@@ -32,9 +33,10 @@ class ExtractMetadataTest(unittest.TestCase):
             )
         cls.connection_string = conn_str
 
-        # Create metabase schema.
+        # Create metabase and data schemata.
         engine = sqlalchemy.create_engine(conn_str)
         engine.execute(sqlalchemy.schema.CreateSchema('metabase'))
+        engine.execute(sqlalchemy.schema.CreateSchema('data'))
         cls.engine = engine
 
         # Run alembic scripts to create database tables.
@@ -43,28 +45,33 @@ class ExtractMetadataTest(unittest.TestCase):
         alembic_cfg.set_main_option('sqlalchemy.url', conn_str)
         alembic.command.upgrade(alembic_cfg, 'head')
 
+
+
         # Create data schema and tables.
-        engine.execute(sqlalchemy.schema.CreateSchema('data'))
         engine.execute('create table data.numeric_1 '
                        '(c1 int primary key, c2 numeric)')
         engine.execute('insert into data.numeric_1 values (1, 1.1)')
         engine.execute('insert into data.numeric_1 values (2, 2.2)')
         # TODO create text, date, and categorical testing tables.
 
-        # Update metabase.data_table for tables created above.
-        engine.execute("""insert into metabase.data_table
-                          (data_table_id, file_table_name)
-                          values (1, 'data.numeric_1')""")
+        # # Update metabase.data_table for tables created above.
+        # engine.execute("""insert into metabase.data_table
+        #                   (data_table_id, file_table_name)
+        #                   values (1, 'data.numeric_1')""")
+
+
+
 
         # Mock settings to connect to testing database. Use this database for
-        # both the metabase and the data database.
+        # both the metabase and data schemata.
         mock_params = MagicMock()
         mock_params.metabase_connection_string = conn_str
         mock_params.data_connection_string = conn_str
+        cls.mock_params = mock_params
 
-        with patch('metabase.extract_metadata.settings', mock_params):
-            extract = extract_metadata.ExtractMetadata(data_table_id=1)
-            cls.extract = extract
+        # with patch('metabase.extract_metadata.settings', mock_params):
+        #     extract = extract_metadata.ExtractMetadata(data_table_id=1)
+        #     cls.extract = extract
 
         # Generate mapped classes from database.
         Base = automap_base(
@@ -86,6 +93,7 @@ class ExtractMetadataTest(unittest.TestCase):
         As the library develops, we should overwrite this test.
 
         '''
+        # TODO
         with self.assertRaises(ValueError):
             self.extract.process_table()
 
@@ -108,7 +116,28 @@ class ExtractMetadataTest(unittest.TestCase):
         self.assertEqual(123, result[0][0])
 
     def test_get_table_name(self):
+        
+        self.engine.execute("""insert into metabase.data_table
+                          (data_table_id, file_table_name)
+                          values (1, 'data.numeric_1')""")
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        assert ('data', 'numeric_1') == (extract.schema_name, extract.table_name)
+        
+        # self.assertEqual(
+        #     ('data', 'numeric_1'), 
+        #     (extract.schema_name, extract.table_name),
+        # )
+
+    @pytest.mark.skip
+    def test_2(self):
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
         self.assertEqual(
             ('data', 'numeric_1'), 
-            (self.extract.schema_name, self.extract.table_name),
+            (extract.schema_name, extract.table_name),
         )

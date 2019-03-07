@@ -34,7 +34,7 @@ class ExtractMetadata():
     def get_table_level_metadata(self):
         '''Extract table level metadata and store it in the metabase.
 
-        Extract table level metadata (number or rows, number of columns and
+        Extract table level metadata (number of rows, number of columns and
         file size (table size)) and store it in DataTable. Also set updated by
         and date last updated.
 
@@ -81,7 +81,7 @@ class ExtractMetadata():
             FROM metabase.data_table
             WHERE data_table_id = {data_table_id};
             """.format(data_table_id=self.data_table_id)
-        ).fetchall()    # Return value is like `[('data.numeric_1',)]`
+        ).fetchall()    # E.g. `[('data.numeric_1',)]`
         
         schema_name, table_name = result[0][0].split('.')
 

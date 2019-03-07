@@ -17,21 +17,25 @@ class ExtractMetadata():
         '''
 
         self.data_table_id = data_table_id
-        self.metabase_engine = sqlalchemy.create_engine(
+
+        metabase_engine = sqlalchemy.create_engine(
             settings.metabase_connection_string
             )
+        self.metabase_conn = metabase_engine.connect()
+
         self.data_engine = sqlalchemy.create_engine(
             settings.data_connection_string
             )
+
         self.schema_name, self.table_name = self.__get_table_name()
 
     def process_table(self, categorical_threshold=10):
         '''Update the metabase with metadata from this Data Table.'''
 
-        self.get_table_level_metadata()
-        self.get_column_level_metadata(categorical_threshold)
+        self._get_table_level_metadata()
+        self._get_column_level_metadata(categorical_threshold)
 
-    def get_table_level_metadata(self):
+    def _get_table_level_metadata(self):
         '''Extract table level metadata and store it in the metabase.
 
         Extract table level metadata (number of rows, number of columns and
@@ -43,7 +47,7 @@ class ExtractMetadata():
         # TODO
         pass
 
-    def get_column_level_metadata(self, categorical_threshold):
+    def _get_column_level_metadata(self, categorical_threshold):
         '''Extract column level metadata and store it in the metabase.
 
         Process columns one by one, identify or infer type, update Column Info
@@ -74,8 +78,8 @@ class ExtractMetadata():
             (str, str): (schema name, table name)
 
         '''
-        conn = self.metabase_engine.connect()
-        result = conn.execute(
+        result = self.metabase_conn.execute(
+            # TODO: parameterize SQL object
             """
             SELECT file_table_name
             FROM metabase.data_table
@@ -83,6 +87,9 @@ class ExtractMetadata():
             """.format(data_table_id=self.data_table_id)
         ).fetchall()    # E.g. `[('data.numeric_1',)]`
         
+        assert len(result) == 1, 'Invalid data_table_id: {}'.format(
+            self.data_table_id)
+
         schema_name, table_name = result[0][0].split('.')
 
         return schema_name, table_name

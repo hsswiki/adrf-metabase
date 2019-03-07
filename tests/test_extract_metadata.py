@@ -1,4 +1,4 @@
-'''Tests for extract_metadata.py'''
+"""Tests for extract_metadata.py"""
 
 import unittest
 from unittest.mock import MagicMock, patch
@@ -14,11 +14,11 @@ from metabase import extract_metadata
 
 
 class ExtractMetadataTest(unittest.TestCase):
-    '''Test for extract_metadata'''
+    """Test for extract_metadata"""
 
     @classmethod
     def setUpClass(cls):
-        '''Create database fixtures.'''
+        """Create database fixtures."""
 
         # Create temporary database for testing.
         cls.postgresql = testing.postgresql.Postgresql()
@@ -33,9 +33,10 @@ class ExtractMetadataTest(unittest.TestCase):
             )
         cls.connection_string = conn_str
 
-        # Create metabase schema.
+        # Create `metabase` and `data` schemata.
         engine = sqlalchemy.create_engine(conn_str)
         engine.execute(sqlalchemy.schema.CreateSchema('metabase'))
+        engine.execute(sqlalchemy.schema.CreateSchema('data'))
         cls.engine = engine
 
         # Create metabase tables with alembic scripts.
@@ -44,13 +45,13 @@ class ExtractMetadataTest(unittest.TestCase):
         alembic_cfg.set_main_option('sqlalchemy.url', conn_str)
         alembic.command.upgrade(alembic_cfg, 'head')
 
-        # Create data schema and tables.
-        engine.execute(sqlalchemy.schema.CreateSchema('data'))
+        # TODO: Move database setup codes into each individual tests.
         engine.execute('create table data.numeric_1 '
                        '(c1 int primary key, c2 numeric)')
         engine.execute('insert into data.numeric_1 values (1, 1.1)')
         engine.execute('insert into data.numeric_1 values (2, 2.2)')
-        # TODO create text, date, and categorical testing tables.
+
+        # TODO: create text, date, and categorical testing tables.
 
         # Mock settings to connect to testing database. Use this database for
         # both the metabase and data schemata.
@@ -68,31 +69,34 @@ class ExtractMetadataTest(unittest.TestCase):
         cls.data_table = Base.classes.data_table
 
     @classmethod
-    def tearDownClass(self):
+    def tearDownClass(cls):
         """Delete temporary database."""
 
-        self.postgresql.stop()
-    
+        cls.postgresql.stop()
+
+    def tearDown(self):
+        self.engine.execute("""TRUNCATE TABLE metabase.data_table CASCADE;""")
+
     @pytest.mark.skip
     def test_process_empty_table(self):
-        '''Right now, a call to process_table just raises an error.
+        """Right now, a call to process_table just raises an error.
 
         As the library develops, we should overwrite this test.
 
-        '''
+        """
         # TODO
         with self.assertRaises(ValueError):
             self.extract.process_table()
-    
+
     @pytest.mark.skip
     def test_row_count(self):
-        '''Test that the row count is correct'''
+        """Test that the row count is correct"""
 
         # TODO remove this line once the actual extract_metadata method is
         # working.
-        self.engine.execute('''update metabase.data_table
+        self.engine.execute("""update metabase.data_table
                                set number_rows = 123
-                               where data_table_id = 1''')
+                               where data_table_id = 1""")
 
         data_table = self.data_table
         row_count = sqlalchemy.sql.expression.select(
@@ -102,7 +106,6 @@ class ExtractMetadataTest(unittest.TestCase):
         conn = self.engine.connect()
         result = conn.execute(row_count).fetchall()
         self.assertEqual(123, result[0][0])
-
 
     def test_get_table_name_no_data_table(self):
         """
@@ -126,8 +129,7 @@ class ExtractMetadataTest(unittest.TestCase):
         assert (('data', 'data_table_name')
                 == (extract.schema_name, extract.table_name))
 
-    @pytest.mark.skip
-    def test_get_table_name_multiple_data_table(self):        
+    def test_get_table_name_multiple_data_table(self):
         self.engine.execute("""
             INSERT INTO metabase.data_table
                 (data_table_id, file_table_name)

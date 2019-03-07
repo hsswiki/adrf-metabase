@@ -15,7 +15,6 @@ class ExtractMetadata():
            data_table_id (int): ID associated with this Data Table.
 
         """
-
         self.data_table_id = data_table_id
 
         metabase_engine = sqlalchemy.create_engine(

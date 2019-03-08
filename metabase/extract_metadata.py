@@ -18,8 +18,7 @@ class ExtractMetadata():
         self.data_table_id = data_table_id
 
         metabase_engine = sqlalchemy.create_engine(
-            settings.metabase_connection_string
-            )
+            settings.metabase_connection_string)
         self.metabase_conn = metabase_engine.connect()
 
         self.data_engine = sqlalchemy.create_engine(
@@ -33,6 +32,8 @@ class ExtractMetadata():
 
         self._get_table_level_metadata()
         self._get_column_level_metadata(categorical_threshold)
+
+        self.metabase_conn.close()
 
     def _get_table_level_metadata(self):
         """Extract table level metadata and store it in the metabase.
@@ -86,9 +87,10 @@ class ExtractMetadata():
             {'data_table_id': self.data_table_id},
         ).fetchall()
 
-        assert result, 'Unfound data_table_id: {}'.format(self.data_table_id)
-
-        schema_name, table_name = result[0][0].split('.')
+        try:
+            schema_name, table_name = result[0][0].split('.')
+        except IndexError:
+            raise ValueError('data_table_id not found in DataTable')
 
         return schema_name, table_name
 

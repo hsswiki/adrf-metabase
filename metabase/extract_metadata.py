@@ -77,53 +77,13 @@ class ExtractMetadata():
             (str, str): (schema name, table name)
 
         """
-
-        # Option 1
-        # References: 
-        #   https://blog.sqreen.com/preventing-sql-injections-in-python/
-        #   https://docs.sqlalchemy.org/en/latest/core/connections.html#sqlalchemy.engine.Connection.execute
-        # Cons: can't specify data type
-        # Notes: `?` and `{}` formatters won't work.
-
-        # result = self.metabase_conn.execute(
-        #     """
-        #     SELECT file_table_name
-        #     FROM metabase.data_table
-        #     WHERE data_table_id = %s;
-        #     """,
-        #     (self.data_table_id,),
-        # ).fetchall()
-
-        # Option 2
-        # Reference: https://docs.sqlalchemy.org/en/latest/core/sqlelement.html#sqlalchemy.sql.expression.text
-        # Cons: not able to check parameter type as well
-
-        # result = self.metabase_conn.execute(
-        #     sqlalchemy.text("""
-        #         SELECT file_table_name
-        #         FROM metabase.data_table
-        #         WHERE data_table_id = :data_table_id;
-        #     """),
-        #     data_table_id=self.data_table_id,
-        # ).fetchall()
-
-
-        # Reference: https://docs.sqlalchemy.org/en/latest/core/sqlelement.html#sqlalchemy.sql.expression.TextClause.bindparams
-        # Note: Python type, e.g. `int` actually can't be used as an argument
-        # to `type_`, which contradicts with the documentation.
-
-        stmt = sqlalchemy.text("""                
+        result = self.metabase_conn.execute(
+            """
             SELECT file_table_name
             FROM metabase.data_table
-            WHERE data_table_id = :data_table_id;
-        """).bindparams(
-            sqlalchemy.bindparam('data_table_id',
-                                 type_=sqlalchemy.types.Integer),
-        )
-
-        result = self.metabase_conn.execute(
-            stmt,
-            data_table_id=self.data_table_id,
+            WHERE data_table_id = %(data_table_id)s;
+            """,
+            {'data_table_id': self.data_table_id},
         ).fetchall()
 
         assert result, 'Unfound data_table_id: {}'.format(self.data_table_id)

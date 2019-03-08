@@ -77,8 +77,7 @@ class ExtractMetadataTest(unittest.TestCase):
     def tearDown(self):
         self.engine.execute("""TRUNCATE TABLE metabase.data_table CASCADE;""")
 
-    @pytest.mark.skip
-    def test_process_empty_table(self):
+    def _test_process_empty_table(self):
         """Right now, a call to process_table just raises an error.
 
         As the library develops, we should overwrite this test.
@@ -88,8 +87,7 @@ class ExtractMetadataTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.extract.process_table()
 
-    @pytest.mark.skip
-    def test_row_count(self):
+    def _test_row_count(self):
         """Test that the row count is correct"""
 
         # TODO remove this line once the actual extract_metadata method is
@@ -145,6 +143,5 @@ class ExtractMetadataTest(unittest.TestCase):
         assert (('data', 'data_table_name_2')
                 == (extract.schema_name, extract.table_name))
 
-    @pytest.mark.skip
-    def test_get_table_level_metadata_num_of_rows_0(self):
+    def _test_get_table_level_metadata_num_of_rows_0(self):
         pass

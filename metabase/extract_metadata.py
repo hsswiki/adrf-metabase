@@ -1,5 +1,7 @@
 """Class to extract metadata from a Data Table"""
 
+import psycopg2
+from psycopg2 import sql
 import sqlalchemy
 
 from . import settings
@@ -19,11 +21,17 @@ class ExtractMetadata():
 
         metabase_engine = sqlalchemy.create_engine(
             settings.metabase_connection_string)
-        self.metabase_conn = metabase_engine.connect()
+        # self.metabase_conn = metabase_engine.connect()
 
-        self.data_engine = sqlalchemy.create_engine(
-            settings.data_connection_string
-            )
+        self.metabase_conn = psycopg2.connect(settings.metabase_connection_string)
+        self.metabase_conn.autocommit = True
+        self.metabase_cur = self.metabase_conn.cursor()
+
+
+
+        data_engine = sqlalchemy.create_engine(
+            settings.data_connection_string)
+        self.data_conn = data_engine.connect()
 
         self.schema_name, self.table_name = self.__get_table_name()
 
@@ -33,7 +41,12 @@ class ExtractMetadata():
         self._get_table_level_metadata()
         self._get_column_level_metadata(categorical_threshold)
 
+
+        self.metabase_cur.close()
         self.metabase_conn.close()
+
+        # self.metabase_conn.close()
+        self.data_conn.close()
 
     def _get_table_level_metadata(self):
         """Extract table level metadata and store it in the metabase.
@@ -44,8 +57,47 @@ class ExtractMetadata():
 
         """
 
-        # TODO
-        pass
+        # get file size by pgstats
+
+        query = sql.SQL("""
+            UPDATE metabase.data_table
+            SET number_rows = (
+                SELECT COUNT(*) AS n_rows
+                FROM {}
+            );
+        """).format(
+            sql.Identifier('.'.join([self.schema_name, self.table_name])))
+        
+        self.metabase_cur.execute(query)
+
+
+
+
+        # self.metabase_conn.execute(
+        #     """
+        #     UPDATE metabase.data_table
+        #     SET number_rows = (
+        #         SELECT COUNT(*) AS n_rows
+        #         FROM %(data_schema_name)s.%(data_table_name)s
+        #     )
+        #     ;
+        #     """,
+        #     {
+        #         'data_schema_name': self.schema_name,
+        #         'data_table_name': self.table_name,
+        #     }
+        # )
+
+        # self.metabase_conn.execute(
+        #     """
+        #     UPDATE metabase.data_table
+        #     SET number_rows = (
+        #         SELECT COUNT(*) AS n_rows
+        #         FROM data.table
+        #     )
+        #     ;
+        #     """
+        # )
 
     def _get_column_level_metadata(self, categorical_threshold):
         """Extract column level metadata and store it in the metabase.
@@ -78,18 +130,19 @@ class ExtractMetadata():
             (str, str): (schema name, table name)
 
         """
-        result = self.metabase_conn.execute(
+        self.metabase_cur.execute(
             """
             SELECT file_table_name
             FROM metabase.data_table
             WHERE data_table_id = %(data_table_id)s;
             """,
             {'data_table_id': self.data_table_id},
-        ).fetchall()
+        )
 
         try:
-            schema_name, table_name = result[0][0].split('.')
-        except IndexError:
+            schema_name, table_name = self.metabase_cur.fetchone(
+                )[0].split('.')
+        except TypeError:
             raise ValueError('data_table_id not found in DataTable')
 
         return schema_name, table_name

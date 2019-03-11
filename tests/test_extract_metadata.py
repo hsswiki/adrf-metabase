@@ -110,7 +110,7 @@ class ExtractMetadataTest(unittest.TestCase):
         Test the validity of `data_table_id` as an argument to the constructor
         of ExtractMetadata.
         """
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             # Will raise error since `metabase.data_table` is empty
             with patch('metabase.extract_metadata.settings', self.mock_params):
                 extract_metadata.ExtractMetadata(data_table_id=1)
@@ -143,5 +143,32 @@ class ExtractMetadataTest(unittest.TestCase):
         assert (('data', 'data_table_name_2')
                 == (extract.schema_name, extract.table_name))
 
-    def _test_get_table_level_metadata_num_of_rows_0(self):
-        pass
+    @pytest.mark.dev
+    def test_get_table_level_metadata_num_of_rows_0(self):
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'data.table');
+
+            CREATE TABLE data.table (c1 INT PRIMARY KEY, c2 NUMERIC);
+
+            INSERT INTO data.table (c1, c2)
+                VALUES
+                    (1, 0.1),
+                    (2, 0.2),
+                    (3, 0.3);
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+        
+        extract._get_table_level_metadata()
+        
+        result = self.engine.execute("""
+            SELECT number_rows
+            FROM metabase.data_table
+            WHERE data_table_id = 1
+        """).fetchall()
+        
+        result_n_rows = result[0][0]
+
+        assert 3 == result_n_rows

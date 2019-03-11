@@ -144,18 +144,22 @@ class ExtractMetadataTest(unittest.TestCase):
                 == (extract.schema_name, extract.table_name))
 
     @pytest.mark.dev
-    def test_get_table_level_metadata_num_of_rows_0(self):
+    def test_get_table_level_metadata_num_of_rows_0_row(self):
+        """
+        Share data table settings with the following tests:
+
+            - test_get_table_level_metadata_num_of_rows_1_row
+            - test_get_table_level_metadata_num_of_rows_2_rows
+
+        """
         self.engine.execute("""
             INSERT INTO metabase.data_table (data_table_id, file_table_name)
-                VALUES (1, 'data.table');
+                VALUES (1, 'data.table_1');
 
-            CREATE TABLE data.table (c1 INT PRIMARY KEY, c2 NUMERIC);
+            CREATE TABLE data.table_1 (c1 INT PRIMARY KEY);
 
-            INSERT INTO data.table (c1, c2)
-                VALUES
-                    (1, 0.1),
-                    (2, 0.2),
-                    (3, 0.3);
+            INSERT INTO data.table_1 (c1)
+                VALUES (1);
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
@@ -171,4 +175,70 @@ class ExtractMetadataTest(unittest.TestCase):
         
         result_n_rows = result[0][0]
 
+        assert 1 == result_n_rows
+
+    # @pytest.mark.dev
+    def test_get_table_level_metadata_num_of_rows_1_row(self):
+        """
+        Share data table settings with the following tests:
+
+            - test_get_table_level_metadata_num_of_rows__row
+
+        """
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'data.table_1');
+
+            CREATE TABLE data.table_1 (c1 INT PRIMARY KEY);
+
+            INSERT INTO data.table_1 (c1)
+                VALUES (1);
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+        
+        extract._get_table_level_metadata()
+        
+        result = self.engine.execute("""
+            SELECT number_rows
+            FROM metabase.data_table
+            WHERE data_table_id = 1
+        """).fetchall()
+        
+        result_n_rows = result[0][0]
+
+        assert 1 == result_n_rows
+
+    # @pytest.mark.dev
+    def test_get_table_level_metadata_num_of_rows_multiple_rows(self):
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'data.table_1');
+
+            CREATE TABLE data.table_1 (c1 INT PRIMARY KEY, c2 NUMERIC);
+
+            INSERT INTO data.table_1 (c1, c2)
+                VALUES
+                    (1, 0.1),
+                    (2, 0.2),
+                    (3, 0.3);
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+        
+        extract._get_table_level_metadata()
+
+        # self.engine.execute('DROP TABLE data.table_1;')
+        
+        result = self.engine.execute("""
+            SELECT number_rows
+            FROM metabase.data_table
+            WHERE data_table_id = 1
+        """).fetchall()
+        
+        result_n_rows = result[0][0]
+
         assert 3 == result_n_rows
+

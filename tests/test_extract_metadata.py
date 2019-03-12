@@ -144,7 +144,7 @@ class ExtractMetadataTest(unittest.TestCase):
         assert (('data', 'data_table_name_2')
                 == (extract.schema_name, extract.table_name))
 
-    def test_get_table_level_metadata_num_of_rows_0_row(self):
+    def test_get_table_level_metadata_num_of_rows_0_row_raise_error(self):
         """
         The following group of tests share data table `data.table_test_n_rows`:
 
@@ -166,17 +166,8 @@ class ExtractMetadataTest(unittest.TestCase):
         with patch('metabase.extract_metadata.settings', self.mock_params):
             extract = extract_metadata.ExtractMetadata(data_table_id=1)
 
-        extract._get_table_level_metadata()
-
-        result = self.engine.execute("""
-            SELECT number_rows
-            FROM metabase.data_table
-            WHERE data_table_id = 1
-        """).fetchall()
-
-        result_n_rows = result[0][0]
-
-        assert 0 == result_n_rows
+        with pytest.raises(ValueError):
+            extract._get_table_level_metadata()
 
     def test_get_table_level_metadata_num_of_rows_1_row(self):
         self.engine.execute("""
@@ -228,9 +219,10 @@ class ExtractMetadataTest(unittest.TestCase):
 
         assert 2 == result_n_rows
 
-    def test_get_table_level_metadata_num_of_cols_0_col_0_row(self):
+    def test_get_table_level_metadata_num_of_cols_0_col_raise_error(self):
         """
         The following group of tests share data table `data.table_test_n_cols`:
+        TODO: update this docstring
 
             - test_get_table_level_metadata_num_of_cols_0_col_0_row
             - test_get_table_level_metadata_num_of_cols_1_col_0_row
@@ -250,24 +242,30 @@ class ExtractMetadataTest(unittest.TestCase):
         with patch('metabase.extract_metadata.settings', self.mock_params):
             extract = extract_metadata.ExtractMetadata(data_table_id=1)
 
-        extract._get_table_level_metadata()
+        with pytest.raises(ValueError):
+            extract._get_table_level_metadata()
 
-        result = self.engine.execute("""
-            SELECT number_columns, number_rows
-            FROM metabase.data_table
-            WHERE data_table_id = 1
-        """).fetchall()
-
-        result_n_cols_n_rows = result[0]
-
-        assert (0, 0) == result_n_cols_n_rows
-
-    def test_get_table_level_metadata_num_of_cols_1_col_0_row(self):
+    def test_get_table_level_metadata_num_of_cols_1_col_0_row_raise_error(
+            self):
         self.engine.execute("""
             INSERT INTO metabase.data_table (data_table_id, file_table_name)
                 VALUES (1, 'data.table_test_n_cols');
 
             ALTER TABLE data.table_test_n_cols ADD c1 INT PRIMARY KEY;
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        with pytest.raises(ValueError):
+            extract._get_table_level_metadata()
+
+    def test_get_table_level_metadata_num_of_cols_1_col_1_row(self):
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'data.table_test_n_cols');
+
+            INSERT INTO data.table_test_n_cols (c1) VALUES (1);
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
@@ -283,17 +281,16 @@ class ExtractMetadataTest(unittest.TestCase):
 
         result_n_cols_n_rows = result[0]
 
-        assert (1, 0) == result_n_cols_n_rows
+        assert (1, 1) == result_n_cols_n_rows
 
-    def test_get_table_level_metadata_num_of_cols_2_cols_1_row(self):
+    def test_get_table_level_metadata_num_of_cols_2_cols_2_row(self):
         self.engine.execute("""
             INSERT INTO metabase.data_table (data_table_id, file_table_name)
                 VALUES (1, 'data.table_test_n_cols');
 
             ALTER TABLE data.table_test_n_cols ADD c2 TEXT;
 
-            INSERT INTO data.table_test_n_cols (c1, c2)
-                VALUES (1, 'text');
+            INSERT INTO data.table_test_n_cols (c1, c2) VALUES (2, 'text');
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
@@ -311,7 +308,7 @@ class ExtractMetadataTest(unittest.TestCase):
 
         result_n_cols_n_rows = result[0]
 
-        assert (2, 1) == result_n_cols_n_rows
+        assert (2, 2) == result_n_cols_n_rows
 
     def test_get_table_level_metadata_table_size_0(self):
         """
@@ -331,17 +328,8 @@ class ExtractMetadataTest(unittest.TestCase):
         with patch('metabase.extract_metadata.settings', self.mock_params):
             extract = extract_metadata.ExtractMetadata(data_table_id=1)
 
-        extract._get_table_level_metadata()
-
-        result = self.engine.execute("""
-            SELECT size
-            FROM metabase.data_table
-            WHERE data_table_id = 1
-        """).fetchall()
-
-        result_table_size = result[0][0]
-
-        assert 0 == result_table_size
+        with pytest.raises(ValueError):
+            extract._get_table_level_metadata()
 
     def test_get_table_level_metadata_table_size_larger_than_0(self):
         self.engine.execute("""
@@ -350,8 +338,7 @@ class ExtractMetadataTest(unittest.TestCase):
 
             ALTER TABLE data.table_test_size ADD c1 INT PRIMARY KEY;
 
-            INSERT INTO data.table_test_size (c1)
-                VALUES (1);
+            INSERT INTO data.table_test_size (c1) VALUES (1);
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
@@ -376,7 +363,9 @@ class ExtractMetadataTest(unittest.TestCase):
             INSERT INTO metabase.data_table (data_table_id, file_table_name)
                 VALUES (1, 'data.table_test_updated_by');
             
-            CREATE TABLE data.table_test_updated_by ();
+            CREATE TABLE data.table_test_updated_by (c1 INT);
+
+            INSERT INTO data.table_test_updated_by (c1) VALUES (1);
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
@@ -402,7 +391,9 @@ class ExtractMetadataTest(unittest.TestCase):
             INSERT INTO metabase.data_table (data_table_id, file_table_name)
                 VALUES (1, 'data.table_test_date_last_updated');
             
-            CREATE TABLE data.table_test_date_last_updated ();
+            CREATE TABLE data.table_test_date_last_updated (c1 INT);
+
+            INSERT INTO data.table_test_date_last_updated (c1) VALUES (1);
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):

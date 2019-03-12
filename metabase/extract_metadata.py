@@ -79,6 +79,13 @@ class ExtractMetadata():
         )
         table_size = self.data_cur.fetchone()[0]
 
+        if n_rows == 0:
+            raise ValueError('Selected data table has 0 rows.')
+        elif n_cols == 0:
+            raise ValueError('Selected data table has 0 columns.')
+        elif table_size == 0:
+            raise ValueError('The size of the selected data table is 0 byte.')
+
         self.metabase_cur.execute(
             """
                 UPDATE metabase.data_table

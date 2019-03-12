@@ -2,6 +2,8 @@
 
 import psycopg2
 from psycopg2 import sql
+
+# TODO: move away from sqlalchemy
 import sqlalchemy
 
 from . import settings
@@ -64,11 +66,12 @@ class ExtractMetadata():
                 SELECT COUNT(*)
                 FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE
-                    TABLE_SCHEMA = 'data'
-                    AND TABLE_NAME = 'table_1'
-            """)
+                    TABLE_SCHEMA = %s
+                    AND TABLE_NAME = %s
+            """),
+            [self.schema_name, self.table_name]
         )
-        n_cols = self.data_cur.fetchone()
+        n_cols = self.data_cur.fetchone()[0]
 
         self.metabase_cur.execute(
             """

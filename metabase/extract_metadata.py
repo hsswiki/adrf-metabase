@@ -1,5 +1,6 @@
 """Class to extract metadata from a Data Table"""
 
+import getpass
 import psycopg2
 from psycopg2 import sql
 
@@ -49,10 +50,9 @@ class ExtractMetadata():
         file size (table size)) and store it in DataTable. Also set updated by
         and date last updated.
 
+        Size is in bytes
+
         """
-
-        # TODO: get file size from pgstats
-
         self.data_cur.execute(
             sql.SQL('SELECT COUNT(*) as n_rows FROM {}.{};').format(
                 sql.Identifier(self.schema_name),
@@ -73,18 +73,29 @@ class ExtractMetadata():
         )
         n_cols = self.data_cur.fetchone()[0]
 
+        self.data_cur.execute(
+            sql.SQL('SELECT PG_RELATION_SIZE(%s);'),
+            [self.schema_name + '.' + self.table_name],
+        )
+        table_size = self.data_cur.fetchone()[0]
+
         self.metabase_cur.execute(
             """
                 UPDATE metabase.data_table
                 SET
                     number_rows = %(n_rows)s,
-                    number_columns = %(n_cols)s
+                    number_columns = %(n_cols)s,
+                    size = %(table_size)s,
+                    updated_by = %(user_name)s,
+                    date_last_updated = (SELECT CURRENT_TIMESTAMP)
                 WHERE data_table_id = %(data_table_id)s
                 ;
             """,
             {
                 'n_rows': n_rows,
                 'n_cols': n_cols,
+                'table_size': table_size,
+                'user_name': getpass.getuser(),
                 'data_table_id': self.data_table_id,
             }
         )

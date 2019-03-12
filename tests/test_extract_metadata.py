@@ -1,5 +1,6 @@
 """Tests for extract_metadata.py"""
 
+import datetime
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -311,3 +312,112 @@ class ExtractMetadataTest(unittest.TestCase):
         result_n_cols_n_rows = result[0]
 
         assert (2, 1) == result_n_cols_n_rows
+
+    def test_get_table_level_metadata_table_size_0(self):
+        """
+        Share data table with
+
+            - test_get_table_level_metadata_table_size_0
+            - test_get_table_level_metadata_table_size_larger_than_0
+        Will be dropped 
+        """
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'data.table_test_size');
+
+            CREATE TABLE data.table_test_size ();
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_table_level_metadata()
+
+        result = self.engine.execute("""
+            SELECT size
+            FROM metabase.data_table
+            WHERE data_table_id = 1
+        """).fetchall()
+
+        result_table_size = result[0][0]
+
+        assert 0 == result_table_size
+
+    def test_get_table_level_metadata_table_size_larger_than_0(self):
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'data.table_test_size');
+
+            ALTER TABLE data.table_test_size ADD c1 INT PRIMARY KEY;
+
+            INSERT INTO data.table_test_size (c1)
+                VALUES (1);
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_table_level_metadata()
+
+        self.engine.execute('DROP TABLE data.table_test_size;')
+
+        result = self.engine.execute("""
+            SELECT size
+            FROM metabase.data_table
+            WHERE data_table_id = 1
+        """).fetchall()
+
+        result_table_size = result[0][0]
+
+        assert 8192 == result_table_size
+
+    def test_get_table_level_metadata_updated_by_user_name_not_empty(self):
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'data.table_test_updated_by');
+            
+            CREATE TABLE data.table_test_updated_by ();
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_table_level_metadata()
+
+        self.engine.execute('DROP TABLE data.table_test_updated_by;')
+
+        result = self.engine.execute("""
+            SELECT updated_by
+            FROM metabase.data_table
+            WHERE data_table_id = 1
+        """).fetchall()
+
+        result_updated_by_user_name = result[0][0]
+
+        assert (isinstance(result_updated_by_user_name, str)
+                and (len(result_updated_by_user_name) > 0))
+
+    def test_get_table_level_metadata_date_last_updated_not_empty(self):
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'data.table_test_date_last_updated');
+            
+            CREATE TABLE data.table_test_date_last_updated ();
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_table_level_metadata()
+
+        self.engine.execute('DROP TABLE data.table_test_date_last_updated;')
+
+        result = self.engine.execute("""
+            SELECT date_last_updated
+            FROM metabase.data_table
+            WHERE data_table_id = 1
+        """).fetchall()
+
+        result_date_last_updated = result[0][0]
+
+        assert isinstance(result_date_last_updated, datetime.datetime)

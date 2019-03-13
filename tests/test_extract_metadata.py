@@ -242,3 +242,23 @@ class ExtractMetadataTest(unittest.TestCase):
 
         assert 3 == result_n_rows
 
+    def test_get_column_level_metadata(self):
+        self.engine.execute("""
+           INSERT INTO metabase.data_table (data_table_id, file_table_name)
+           VALUES (1, 'data.table_1');
+
+           CREATE TABLE data.table_1 (c1 INT, c2 TEXT, c3 DATE);
+
+           INSERT INTO data.table_1 (c1, c2, c3)
+           VALUES
+           (1, 'a', '2018-01-01'),
+           (2, 'b', '2018-02-01'),
+           (3, 'c', '2018-03-02');
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_column_level_metadata(categorical_threshold=10)
+
+

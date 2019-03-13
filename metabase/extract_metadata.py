@@ -6,7 +6,7 @@ import psycopg2
 from psycopg2 import sql
 
 from . import settings
-from . import  extract_metadata_helper
+from . import extract_metadata_helper
 
 
 class ExtractMetadata():
@@ -51,10 +51,9 @@ class ExtractMetadata():
         file size (table size)) and store it in DataTable. Also set updated by
         and date last updated.
 
+        Size is in bytes
+
         """
-
-        # TODO: get file size from pgstats
-
         self.data_cur.execute(
             sql.SQL('SELECT COUNT(*) as n_rows FROM {}.{};').format(
                 sql.Identifier(self.schema_name),
@@ -68,24 +67,43 @@ class ExtractMetadata():
                 SELECT COUNT(*)
                 FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE
-                    TABLE_SCHEMA = 'data'
-                    AND TABLE_NAME = 'table_1'
-            """)
+                    TABLE_SCHEMA = %s
+                    AND TABLE_NAME = %s
+            """),
+            [self.schema_name, self.table_name]
         )
-        n_cols = self.data_cur.fetchone()
+        n_cols = self.data_cur.fetchone()[0]
+
+        self.data_cur.execute(
+            sql.SQL('SELECT PG_RELATION_SIZE(%s);'),
+            [self.schema_name + '.' + self.table_name],
+        )
+        table_size = self.data_cur.fetchone()[0]
+
+        if n_rows == 0:
+            raise ValueError('Selected data table has 0 rows.')
+        elif n_cols == 0:
+            raise ValueError('Selected data table has 0 columns.')
+        elif table_size == 0:
+            raise ValueError('The size of the selected data table is 0 byte.')
 
         self.metabase_cur.execute(
             """
                 UPDATE metabase.data_table
                 SET
                     number_rows = %(n_rows)s,
-                    number_columns = %(n_cols)s
+                    number_columns = %(n_cols)s,
+                    size = %(table_size)s,
+                    updated_by = %(user_name)s,
+                    date_last_updated = (SELECT CURRENT_TIMESTAMP)
                 WHERE data_table_id = %(data_table_id)s
                 ;
             """,
             {
                 'n_rows': n_rows,
                 'n_cols': n_cols,
+                'table_size': table_size,
+                'user_name': getpass.getuser(),
                 'data_table_id': self.data_table_id,
             }
         )
@@ -186,7 +204,6 @@ class ExtractMetadata():
         )
 
         return type
-
 
     def __update_numeric_metadata(self, col):
         """Extract metadata from a numeric column.

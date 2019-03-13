@@ -12,22 +12,23 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../..'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'ADRF Metabase'
-copyright = '2019, Chapin Hall'
+copyright = '2019, Coleridge Initiative'
 author = 'Molly Rossow and Shen Han'
 
 # The short X.Y version
-version = ''
+version = '0.1'
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+release = '0.1.1'
 
+# Reference: https://www.python.org/dev/peps/pep-0440/
 
 # -- General configuration ---------------------------------------------------
 
@@ -42,13 +43,19 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.githubpages',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.mathjax',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode',
 ]
 
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 napoleon_use_param = False
 napoleon_use_rtype = False
+
+autoclass_content = 'both'
+autodoc_member_order = 'bysource'
+# Reference: http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

@@ -1,5 +1,4 @@
-"""
-
+"""Helper funtions for extract_metadata.
 """
 
 import getpass
@@ -10,8 +9,7 @@ from psycopg2 import sql
 
 def get_column_type(cursor, col, categorical_threshold, schema_name,
                     table_name):
-    """ """
-
+    """Return the column type."""
 
     if is_numeric(cursor, col, schema_name, table_name):
         return 'numeric'
@@ -82,6 +80,7 @@ def is_date(cursor, col, schema_name, table_name):
         cursor.execute("DROP TABLE IF EXISTS metabase.temp")
         return False
 
+
 def is_code(cursor, col, schema_name, table_name,
             categorical_threshold):
     """Return True if column is categorical.
@@ -91,7 +90,7 @@ def is_code(cursor, col, schema_name, table_name,
     copied to metadata.temp as a text column and the column will be assumed to
     be text.
 
-    """ 
+    """
 
     cursor.execute("DROP TABLE IF EXISTS metabase.temp")
     cursor.execute(
@@ -123,14 +122,15 @@ def is_code(cursor, col, schema_name, table_name,
     else:
         return False
 
-def update_numeric(cursor, col, data_table_id):
-    """ """
 
-    #TODO this needs to be split into two functions, one that uses the data
+def update_numeric(cursor, col, data_table_id):
+    """Update Column Info  and Numeric Column for a numerical column."""
+
+    # TODO this needs to be split into two functions, one that uses the data
     # cursor and one that uses metabase cursor to support data stored in a
     # second database.
 
-    #Create Column Info entry
+    # Create Column Info entry
     cursor.execute(
         """
         INSERT INTO metabase.column_info
@@ -185,9 +185,9 @@ def update_numeric(cursor, col, data_table_id):
             (SELECT CURRENT_TIMESTAMP)
             FROM metabase.temp
             """,
-        {
-        'data_table_id': data_table_id,
-        'column_name': col,
-        'updated_by': getpass.getuser(),
-        }
+            {
+                'data_table_id': data_table_id,
+                'column_name': col,
+                'updated_by': getpass.getuser(),
+            }
     )

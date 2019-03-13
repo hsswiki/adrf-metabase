@@ -1,6 +1,8 @@
 """Class to extract metadata from a Data Table"""
 
-import sqlalchemy
+import getpass
+import psycopg2
+from psycopg2 import sql
 
 from . import settings
 
@@ -17,13 +19,13 @@ class ExtractMetadata():
         """
         self.data_table_id = data_table_id
 
-        metabase_engine = sqlalchemy.create_engine(
-            settings.metabase_connection_string)
-        self.metabase_conn = metabase_engine.connect()
+        self.metabase_conn = psycopg2.connect(settings.metabase_connection_string)
+        self.metabase_conn.autocommit = True
+        self.metabase_cur = self.metabase_conn.cursor()
 
-        self.data_engine = sqlalchemy.create_engine(
-            settings.data_connection_string
-            )
+        self.data_conn = psycopg2.connect(settings.data_connection_string)
+        self.data_conn.autocommit = True
+        self.data_cur = self.data_conn.cursor()
 
         self.schema_name, self.table_name = self.__get_table_name()
 
@@ -33,7 +35,10 @@ class ExtractMetadata():
         self._get_table_level_metadata()
         self._get_column_level_metadata(categorical_threshold)
 
+        self.metabase_cur.close()
         self.metabase_conn.close()
+        self.data_cur.close()
+        self.data_conn.close()
 
     def _get_table_level_metadata(self):
         """Extract table level metadata and store it in the metabase.
@@ -42,10 +47,62 @@ class ExtractMetadata():
         file size (table size)) and store it in DataTable. Also set updated by
         and date last updated.
 
-        """
+        Size is in bytes
 
-        # TODO
-        pass
+        """
+        self.data_cur.execute(
+            sql.SQL('SELECT COUNT(*) as n_rows FROM {}.{};').format(
+                sql.Identifier(self.schema_name),
+                sql.Identifier(self.table_name),
+            )
+        )
+        n_rows = self.data_cur.fetchone()[0]
+
+        self.data_cur.execute(
+            sql.SQL("""
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE
+                    TABLE_SCHEMA = %s
+                    AND TABLE_NAME = %s
+            """),
+            [self.schema_name, self.table_name]
+        )
+        n_cols = self.data_cur.fetchone()[0]
+
+        self.data_cur.execute(
+            sql.SQL('SELECT PG_RELATION_SIZE(%s);'),
+            [self.schema_name + '.' + self.table_name],
+        )
+        table_size = self.data_cur.fetchone()[0]
+
+        if n_rows == 0:
+            raise ValueError('Selected data table has 0 rows.')
+        elif n_cols == 0:
+            raise ValueError('Selected data table has 0 columns.')
+        elif table_size == 0:
+            raise ValueError('The size of the selected data table is 0 byte.')
+
+        self.metabase_cur.execute(
+            """
+                UPDATE metabase.data_table
+                SET
+                    number_rows = %(n_rows)s,
+                    number_columns = %(n_cols)s,
+                    size = %(table_size)s,
+                    updated_by = %(user_name)s,
+                    date_last_updated = (SELECT CURRENT_TIMESTAMP)
+                WHERE data_table_id = %(data_table_id)s
+                ;
+            """,
+            {
+                'n_rows': n_rows,
+                'n_cols': n_cols,
+                'table_size': table_size,
+                'user_name': getpass.getuser(),
+                'data_table_id': self.data_table_id,
+            }
+        )
 
     def _get_column_level_metadata(self, categorical_threshold):
         """Extract column level metadata and store it in the metabase.
@@ -78,18 +135,19 @@ class ExtractMetadata():
             (str, str): (schema name, table name)
 
         """
-        result = self.metabase_conn.execute(
+        self.metabase_cur.execute(
             """
             SELECT file_table_name
             FROM metabase.data_table
             WHERE data_table_id = %(data_table_id)s;
             """,
             {'data_table_id': self.data_table_id},
-        ).fetchall()
+        )
 
         try:
-            schema_name, table_name = result[0][0].split('.')
-        except IndexError:
+            schema_name, table_name = self.metabase_cur.fetchone(
+                )[0].split('.')
+        except TypeError:
             raise ValueError('data_table_id not found in DataTable')
 
         return schema_name, table_name

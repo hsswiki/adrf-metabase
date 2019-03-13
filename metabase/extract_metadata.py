@@ -4,9 +4,6 @@ import getpass
 import psycopg2
 from psycopg2 import sql
 
-# TODO: move away from sqlalchemy
-import sqlalchemy
-
 from . import settings
 
 

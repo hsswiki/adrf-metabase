@@ -123,13 +123,13 @@ class ExtractMetadata():
             if column_type == 'numeric':
                 self.__update_numeric_metadata(col)
             elif column_type == 'text':
-                self.__updatae_text_metadata(col)
+                self.__update_text_metadata(col)
             elif column_type == 'date':
                 self.__update_date_metadata(col)
             elif column_type == 'code':
                 self.__update_code_metadata(col)
             else:
-                raise ValueError('Unknow column type')
+                raise ValueError('Unknown column type')
 
     def __get_column_names(self):
         """Returns the names of the columns in the data table.
@@ -185,8 +185,8 @@ class ExtractMetadata():
     def __get_column_type(self, col, categorical_threshold):
         """Identify or infer column type.
 
-        Uses the type set in the database if avaible. If all columns are text,
-        attempts to infer the column type.
+        Uses the type set in the database if available. If all columns are
+        text, attempts to infer the column type.
 
         Returns:
           str: 'numeric', 'text', 'date' or 'code'
@@ -214,6 +214,7 @@ class ExtractMetadata():
         """
 
         extract_metadata_helper.update_numeric(
+            self.data_cur,
             self.metabase_cur,
             col,
             self.data_table_id
@@ -227,8 +228,11 @@ class ExtractMetadata():
 
         """
 
-        # TODO
-        pass
+        extract_metadata_helper.update_text(
+            self.metabase_cur,
+            col,
+            self.data_table_id
+        )
 
     def __update_date_metadata(self, col):
         """Extract metadata from a date column.

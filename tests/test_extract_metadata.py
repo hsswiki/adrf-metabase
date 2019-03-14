@@ -12,6 +12,7 @@ from sqlalchemy.ext.automap import automap_base
 import testing.postgresql
 
 from metabase import extract_metadata
+from metabase import extract_metadata_helper
 
 
 class ExtractMetadataTest(unittest.TestCase):
@@ -414,20 +415,47 @@ class ExtractMetadataTest(unittest.TestCase):
         assert isinstance(result_date_last_updated, datetime.datetime)
 
     def test_get_column_level_metadata(self):
+        """Test extracting column level metadata."""
+
         self.engine.execute("""
            INSERT INTO metabase.data_table (data_table_id, file_table_name)
            VALUES (1, 'data.table_1');
 
-           CREATE TABLE data.table_1 (c1 INT, c2 TEXT, c3 DATE);
+           CREATE TABLE data.table_1
+               (c_num INT, c_text TEXT, c_code TEXT, c_date DATE);
 
-           INSERT INTO data.table_1 (c1, c2, c3)
+           INSERT INTO data.table_1 (c_num, c_text, c_code, c_date)
            VALUES
-           (1, 'a', '2018-01-01'),
-           (2, 'b', '2018-02-01'),
-           (3, 'c', '2018-03-02');
+           (1, 'a', 'x', '2018-01-01'),
+           (2, 'a', 'y', '2018-02-01'),
+           (3, 'c', 'z', '2018-03-02');
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
             extract = extract_metadata.ExtractMetadata(data_table_id=1)
 
-        extract._get_column_level_metadata(categorical_threshold=10)
+        extract._get_column_level_metadata(categorical_threshold=2)
+
+        # Check Numeric results.
+        results = self.engine.execute("""
+            SELECT
+            data_table_id,
+            column_name,
+            minimum,
+            maximum,
+            mean,
+            median
+            updated_by,
+            date_last_updated
+            FROM metabase.numeric_column
+            WHERE
+                data_table_id = 1
+                AND column_name = 'c_num'
+            """
+        )
+
+        #print(results[0])
+
+        # assert(results[0], 1)
+
+

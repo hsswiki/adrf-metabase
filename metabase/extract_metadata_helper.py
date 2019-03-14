@@ -7,23 +7,27 @@ import psycopg2
 from psycopg2 import sql
 
 
-def get_column_type(cursor, col, categorical_threshold, schema_name,
+def get_column_type(data_cursor, col, categorical_threshold, schema_name,
                     table_name):
     """Return the column type."""
 
-    if is_numeric(cursor, col, schema_name, table_name):
+    print(col)
+    if is_numeric(data_cursor, col, schema_name, table_name):
+        print('numeric column')
         return 'numeric'
-    elif is_date(cursor, col, schema_name, table_name):
+    elif is_date(data_cursor, col, schema_name, table_name):
+        print('date')
         return 'date'
-    elif is_code(cursor, col, schema_name, table_name, categorical_threshold):
+    elif is_code(data_cursor, col, schema_name, table_name, categorical_threshold):
+        print('code')
         return 'code'
     else:
         # is_code creates a column in metadata.temp with type text and the a
         # copy of col. is_copy must be run before assigning type as text.
+        print('text')
         return 'text'
 
-
-def is_numeric(cursor, col, schema_name, table_name):
+def is_numeric(data_cursor, col, schema_name, table_name):
     """Return True if column is numeric.
 
     Return True if column is numeric. Converts text column to numeric and
@@ -31,14 +35,19 @@ def is_numeric(cursor, col, schema_name, table_name):
 
     """
 
-    cursor.execute("DROP TABLE IF EXISTS metabase.temp")
-    cursor.execute(
-        "CREATE TABLE metabase.temp (converted_data NUMERIC)"
+    # Create temporary table for storing converted data.
+    data_cursor.execute(
+        """
+        CREATE TEMPORARY TABLE IF NOT EXISTS
+        converted_data
+        (data_col NUMERIC)
+        """
     )
+
     try:
-        cursor.execute(
+        data_cursor.execute(
             sql.SQL("""
-            INSERT INTO metabase.temp (converted_data)
+            INSERT INTO converted_data (data_col)
             SELECT {}::NUMERIC FROM {}.{}
             """).format(
                 sql.Identifier(col),
@@ -48,11 +57,11 @@ def is_numeric(cursor, col, schema_name, table_name):
         )
         return True
     except (psycopg2.ProgrammingError, psycopg2.DataError):
-        cursor.execute("DROP TABLE IF EXISTS metabase.temp")
+        data_cursor.execute('DROP TABLE IF EXISTS converted_data')
         return False
 
 
-def is_date(cursor, col, schema_name, table_name):
+def is_date(data_cursor, col, schema_name, table_name):
     """Return True if column is date.
 
     Return True if column is type date. Converts text column to date and stores
@@ -60,14 +69,19 @@ def is_date(cursor, col, schema_name, table_name):
 
     """
 
-    cursor.execute("DROP TABLE IF EXISTS metabase.temp")
-    cursor.execute(
-        "CREATE TABLE metabase.temp (converted_data DATE)"
+    # Create temporary table for storing converted data.
+    data_cursor.execute(
+        """
+        CREATE TEMPORARY TABLE IF NOT EXISTS
+        converted_data
+        (data_col DATE)
+        """
     )
+
     try:
-        cursor.execute(
+        data_cursor.execute(
             sql.SQL("""
-            INSERT INTO metabase.temp (converted_data)
+            INSERT INTO converted_data (data_col)
             SELECT {}::DATE FROM {}.{}
             """).format(
                 sql.Identifier(col),
@@ -76,12 +90,12 @@ def is_date(cursor, col, schema_name, table_name):
             )
         )
         return True
-    except (psycopg2.ProgrammingError, psycopg2.DataError):
-        cursor.execute("DROP TABLE IF EXISTS metabase.temp")
+    except (psycopg2.ProgrammingError, psycopg2.DataError) as e:
+        data_cursor.execute("DROP TABLE IF EXISTS converted_data")
         return False
 
 
-def is_code(cursor, col, schema_name, table_name,
+def is_code(data_cursor, col, schema_name, table_name,
             categorical_threshold):
     """Return True if column is categorical.
 
@@ -92,11 +106,16 @@ def is_code(cursor, col, schema_name, table_name,
 
     """
 
-    cursor.execute("DROP TABLE IF EXISTS metabase.temp")
-    cursor.execute(
-        "CREATE TABLE metabase.temp (converted_data TEXT)"
+    # Create temporary table for storing converted data.
+    data_cursor.execute(
+        """
+        CREATE TEMPORARY TABLE IF NOT EXISTS
+        converted_data
+        (data_col TEXT)
+        """
     )
-    cursor.execute(
+
+    data_cursor.execute(
         sql.SQL(
             """
             SELECT COUNT(DISTINCT {}) FROM {}.{}
@@ -106,11 +125,11 @@ def is_code(cursor, col, schema_name, table_name,
             sql.Identifier(table_name),
         )
     )
-    n_distinct = cursor.fetchall()[0][0]
+    n_distinct = data_cursor.fetchall()[0][0]
 
     if n_distinct <= categorical_threshold:
-        cursor.execute(sql.SQL("""
-        INSERT INTO metabase.temp (converted_data)
+        data_cursor.execute(sql.SQL("""
+        INSERT INTO converted_data (data_col)
         SELECT {} FROM {}.{}
         """).format(
                 sql.Identifier(col),
@@ -123,12 +142,108 @@ def is_code(cursor, col, schema_name, table_name,
         return False
 
 
-def update_numeric(cursor, col, data_table_id):
+def update_numeric(data_cursor, metabase_cursor, col, data_table_id):
     """Update Column Info  and Numeric Column for a numerical column."""
 
     # TODO this needs to be split into two functions, one that uses the data
     # cursor and one that uses metabase cursor to support data stored in a
     # second database.
+
+    update_column_info(metabase_cursor, col, data_table_id, 'numeric')
+    # Update created by, created date.
+
+
+    (minimum, maximum, mean, median) = get_numeric_metadata(data_cursor, col, data_table_id)
+
+    metabase_cursor.execute(
+        """
+        INSERT INTO metabase.numeric_column
+        (
+        data_table_id,
+        column_name,
+        minimum,
+        maximum,
+        mean,
+        median,
+        updated_by,
+        date_last_updated
+        )
+        VALUES
+        (
+        %(data_table_id)s,
+        %(column_name)s,
+        %(minimum)s,
+        %(maximum)s,
+        %(mean)s,
+        %(median)s,
+        %(updated_by)s,
+        (SELECT CURRENT_TIMESTAMP)
+        )
+        """,
+        {
+            'data_table_id': data_table_id,
+            'column_name': col,
+            'minimum': minimum,
+            'maximum': maximum,
+            'mean': mean,
+            'median': median,
+            'updated_by': getpass.getuser(),
+        }
+    )
+
+def get_numeric_metadata(data_cursor, col, data_table_id):
+    """Get metdata from a numeric column."""
+
+
+    data_cursor.execute(
+        """
+        SELECT
+        min(data_col),
+        max(data_col),
+        avg(data_col),
+        PERCENTILE_CONT(0.5)
+            WITHIN GROUP (ORDER BY data_col)
+        FROM converted_data
+        """
+    )
+
+    return data_cursor.fetchall()[0]
+
+
+def update_text(cursor, col, data_table_id):
+    """Update Column Info  and Numeric Column for a numerical column."""
+
+# def get_text_metadata(data_cursor, col, data_table_):
+#     """Get metadata from a text column."""
+
+#     # Create tempory table to hold text lengths.
+#     cursor.execute(
+#         """CREATE TEMPORARY TABLE text_length
+#         AS
+#         SELECT char_length(converted_data)
+#         FROM
+#         metabase.temp"""
+#     )
+
+#     cursor.execute(
+#         """
+#         SELECT
+#         MAX(length),
+#         MIN(length),
+#         PERCENTILE_CONT(0.5)
+#             WITHIN GRUP (ORDER BY length)
+#         FROM text_length;
+#         """
+#     )
+
+#     (max_len, min_len, median_len) = cursor.fetchall()[0]
+
+#     return (max_len, min_len, median_len)
+
+def update_column_info(cursor, col, data_table_id, data_type):
+    """Add a row for this data column to the column info metadata table."""
+
+    # TODO How to handled existing rows?
 
     # Create Column Info entry
     cursor.execute(
@@ -152,42 +267,7 @@ def update_numeric(cursor, col, data_table_id):
         {
             'data_table_id': data_table_id,
             'column_name': col,
-            'data_type': 'numeric',
+            'data_type': data_type,
             'updated_by': getpass.getuser(),
         }
-    )
-
-    # Update created by, created date.
-
-    # Get metatdata and update Column Info.
-    cursor.execute(
-            """
-            INSERT INTO metabase.numeric_column
-            (
-            data_table_id,
-            column_name,
-            minimum,
-            maximum,
-            mean,
-            median,
-            updated_by,
-            date_last_updated
-            )
-            SELECT
-            %(data_table_id)s,
-            %(column_name)s,
-            min(converted_data),
-            max(converted_data),
-            avg(converted_data),
-            PERCENTILE_CONT(0.5)
-                WITHIN GROUP (ORDER BY converted_data),
-            %(updated_by)s,
-            (SELECT CURRENT_TIMESTAMP)
-            FROM metabase.temp
-            """,
-            {
-                'data_table_id': data_table_id,
-                'column_name': col,
-                'updated_by': getpass.getuser(),
-            }
     )

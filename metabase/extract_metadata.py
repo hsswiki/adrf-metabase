@@ -1,10 +1,12 @@
 """Class to extract metadata from a Data Table"""
 
 import getpass
+
 import psycopg2
 from psycopg2 import sql
 
 from . import settings
+from . import extract_metadata_helper
 
 
 class ExtractMetadata():
@@ -19,7 +21,9 @@ class ExtractMetadata():
         """
         self.data_table_id = data_table_id
 
-        self.metabase_conn = psycopg2.connect(settings.metabase_connection_string)
+        self.metabase_conn = psycopg2.connect(
+            settings.metabase_connection_string
+        )
         self.metabase_conn.autocommit = True
         self.metabase_cur = self.metabase_conn.cursor()
 
@@ -112,17 +116,43 @@ class ExtractMetadata():
 
         """
 
-        column_type = self.__get_column_type(categorical_threshold)
-        if column_type == 'numeric':
-            self.get_numeric_metadata()
-        elif column_type == 'text':
-            self.get_text_metadata()
-        elif column_type == 'date':
-            self.get_date_metadate()
-        elif column_type == 'code':
-            self.get_code_metadata()
-        else:
-            raise ValueError('Unknow column type')
+        column_names = self.__get_column_names()
+
+        for col in column_names:
+            column_type = self.__get_column_type(col, categorical_threshold)
+            if column_type == 'numeric':
+                self.__update_numeric_metadata(col)
+            elif column_type == 'text':
+                self.__updatae_text_metadata(col)
+            elif column_type == 'date':
+                self.__update_date_metadata(col)
+            elif column_type == 'code':
+                self.__update_code_metadata(col)
+            else:
+                raise ValueError('Unknow column type')
+
+    def __get_column_names(self):
+        """Returns the names of the columns in the data table.
+
+        Returns:
+            (str): Column names.
+
+        """
+
+        self.data_cur.execute(
+                """
+                SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE table_schema = %(schema)s
+                AND table_name  = %(table)s;
+                """,
+                {
+                        'schema': self.schema_name,
+                        'table': self.table_name
+                },
+                )
+
+        columns = self.data_cur.fetchall()
+        return([c[0] for c in columns])
 
     def __get_table_name(self):
         """Return the the table schema and name using the Data Table ID.
@@ -152,7 +182,7 @@ class ExtractMetadata():
 
         return schema_name, table_name
 
-    def __get_column_type(self, categorical_threshold):
+    def __get_column_type(self, col, categorical_threshold):
         """Identify or infer column type.
 
         Uses the type set in the database if avaible. If all columns are text,
@@ -163,10 +193,19 @@ class ExtractMetadata():
 
         """
 
-        # TODO
-        pass
+        # TODO Use server side cursor here
 
-    def __get_numeric_metadata(self):
+        type = extract_metadata_helper.get_column_type(
+            self.data_cur,
+            col,
+            categorical_threshold,
+            self.schema_name,
+            self.table_name
+        )
+
+        return type
+
+    def __update_numeric_metadata(self, col):
         """Extract metadata from a numeric column.
 
         Extract metadata from a numeric column and store metadata in Column
@@ -174,10 +213,13 @@ class ExtractMetadata():
 
         """
 
-        # TODO
-        pass
+        extract_metadata_helper.update_numeric(
+            self.metabase_cur,
+            col,
+            self.data_table_id
+        )
 
-    def __get_text_metadata(self):
+    def __update_text_metadata(self, col):
         """Extract metadata from a text column.
 
         Extract metadata from a text column and store metadata in Column Info
@@ -188,7 +230,7 @@ class ExtractMetadata():
         # TODO
         pass
 
-    def __get_date_metadata(self):
+    def __update_date_metadata(self, col):
         """Extract metadata from a date column.
 
         Extract metadata from date column and store metadate in Column Info and
@@ -199,7 +241,7 @@ class ExtractMetadata():
         # TODO
         pass
 
-    def __get_code_metadata(self):
+    def __update_code_metadata(self, col):
         """Extract metadata from a categorial column.
 
         Extract metadata from a categorial columns and store metadata in Column

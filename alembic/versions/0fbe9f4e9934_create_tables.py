@@ -28,7 +28,7 @@ def upgrade():
         sa.Column('notes', sa.Text),
         sa.Column('created_by', sa.Text),
         sa.Column('date_created', sa.TIMESTAMP),
-        sa.Column('update_by', sa.Text),
+        sa.Column('updated_by', sa.Text),
         sa.Column('date_last_updated', sa.TIMESTAMP),
         schema=SCHEMA_NAME
     )
@@ -195,7 +195,7 @@ def upgrade():
         sa.Column('data_type', sa.Text),
         sa.Column('created_by', sa.Text),
         sa.Column('date_created', sa.TIMESTAMP),
-        sa.Column('update_by', sa.Text),
+        sa.Column('updated_by', sa.Text),
         sa.Column('date_last_updated', sa.TIMESTAMP),
         schema=SCHEMA_NAME
     )

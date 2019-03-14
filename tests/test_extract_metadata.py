@@ -151,7 +151,7 @@ class ExtractMetadataTest(unittest.TestCase):
             - test_get_table_level_metadata_num_of_rows_0_row
             - test_get_table_level_metadata_num_of_rows_1_row
             - test_get_table_level_metadata_num_of_rows_2_rows
-        
+
         `data.table_test_n_rows` will be dropped at the end of the last test
         in this group.
 
@@ -180,9 +180,9 @@ class ExtractMetadataTest(unittest.TestCase):
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
             extract = extract_metadata.ExtractMetadata(data_table_id=1)
-        
+
         extract._get_table_level_metadata()
-        
+
         result = self.engine.execute("""
             SELECT number_rows
             FROM metabase.data_table
@@ -204,11 +204,11 @@ class ExtractMetadataTest(unittest.TestCase):
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
             extract = extract_metadata.ExtractMetadata(data_table_id=1)
-        
+
         extract._get_table_level_metadata()
 
         self.engine.execute('DROP TABLE data.table_test_n_rows;')
-        
+
         result = self.engine.execute("""
             SELECT number_rows
             FROM metabase.data_table
@@ -227,10 +227,10 @@ class ExtractMetadataTest(unittest.TestCase):
             - test_get_table_level_metadata_num_of_cols_0_col_0_row
             - test_get_table_level_metadata_num_of_cols_1_col_0_row
             - test_get_table_level_metadata_num_of_cols_2_cols_1_row
-        
+
         `data.table_test_n_cols` will be dropped at the end of the last test
         in this group.
-        
+
         """
         self.engine.execute("""
             INSERT INTO metabase.data_table (data_table_id, file_table_name)
@@ -316,7 +316,7 @@ class ExtractMetadataTest(unittest.TestCase):
 
             - test_get_table_level_metadata_table_size_0
             - test_get_table_level_metadata_table_size_larger_than_0
-        Will be dropped 
+        Will be dropped
         """
         self.engine.execute("""
             INSERT INTO metabase.data_table (data_table_id, file_table_name)
@@ -362,7 +362,7 @@ class ExtractMetadataTest(unittest.TestCase):
         self.engine.execute("""
             INSERT INTO metabase.data_table (data_table_id, file_table_name)
                 VALUES (1, 'data.table_test_updated_by');
-            
+
             CREATE TABLE data.table_test_updated_by (c1 INT);
 
             INSERT INTO data.table_test_updated_by (c1) VALUES (1);
@@ -390,7 +390,7 @@ class ExtractMetadataTest(unittest.TestCase):
         self.engine.execute("""
             INSERT INTO metabase.data_table (data_table_id, file_table_name)
                 VALUES (1, 'data.table_test_date_last_updated');
-            
+
             CREATE TABLE data.table_test_date_last_updated (c1 INT);
 
             INSERT INTO data.table_test_date_last_updated (c1) VALUES (1);
@@ -412,3 +412,22 @@ class ExtractMetadataTest(unittest.TestCase):
         result_date_last_updated = result[0][0]
 
         assert isinstance(result_date_last_updated, datetime.datetime)
+
+    def test_get_column_level_metadata(self):
+        self.engine.execute("""
+           INSERT INTO metabase.data_table (data_table_id, file_table_name)
+           VALUES (1, 'data.table_1');
+
+           CREATE TABLE data.table_1 (c1 INT, c2 TEXT, c3 DATE);
+
+           INSERT INTO data.table_1 (c1, c2, c3)
+           VALUES
+           (1, 'a', '2018-01-01'),
+           (2, 'b', '2018-02-01'),
+           (3, 'c', '2018-03-02');
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_column_level_metadata(categorical_threshold=10)

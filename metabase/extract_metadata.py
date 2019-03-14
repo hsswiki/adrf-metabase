@@ -82,10 +82,7 @@ class ExtractMetadata():
 
         if n_rows == 0:
             raise ValueError('Selected data table has 0 rows.')
-        elif n_cols == 0:
-            raise ValueError('Selected data table has 0 columns.')
-        elif table_size == 0:
-            raise ValueError('The size of the selected data table is 0 byte.')
+            # This will also capture n_cols == 0 and size == 0.
 
         self.metabase_cur.execute(
             """

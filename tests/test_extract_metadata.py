@@ -148,7 +148,7 @@ class ExtractMetadataTest(unittest.TestCase):
         """
         The following group of tests share data table `data.table_test_n_rows`:
 
-            - test_get_table_level_metadata_num_of_rows_0_row
+            - test_get_table_level_metadata_num_of_rows_0_row_raise_error
             - test_get_table_level_metadata_num_of_rows_1_row
             - test_get_table_level_metadata_num_of_rows_2_rows
 
@@ -222,11 +222,11 @@ class ExtractMetadataTest(unittest.TestCase):
     def test_get_table_level_metadata_num_of_cols_0_col_raise_error(self):
         """
         The following group of tests share data table `data.table_test_n_cols`:
-        TODO: update this docstring
 
-            - test_get_table_level_metadata_num_of_cols_0_col_0_row
-            - test_get_table_level_metadata_num_of_cols_1_col_0_row
-            - test_get_table_level_metadata_num_of_cols_2_cols_1_row
+            - test_get_table_level_metadata_num_of_cols_0_col_raise_error
+            - test_get_table_level_metadata_num_of_cols_1_col_0_row_raise_error
+            - test_get_table_level_metadata_num_of_cols_1_col_1_row
+            - test_get_table_level_metadata_num_of_cols_2_cols_2_row
 
         `data.table_test_n_cols` will be dropped at the end of the last test
         in this group.
@@ -309,54 +309,6 @@ class ExtractMetadataTest(unittest.TestCase):
         result_n_cols_n_rows = result[0]
 
         assert (2, 2) == result_n_cols_n_rows
-
-    def test_get_table_level_metadata_table_size_0(self):
-        """
-        Share data table with
-
-            - test_get_table_level_metadata_table_size_0
-            - test_get_table_level_metadata_table_size_larger_than_0
-        Will be dropped
-        """
-        self.engine.execute("""
-            INSERT INTO metabase.data_table (data_table_id, file_table_name)
-                VALUES (1, 'data.table_test_size');
-
-            CREATE TABLE data.table_test_size ();
-        """)
-
-        with patch('metabase.extract_metadata.settings', self.mock_params):
-            extract = extract_metadata.ExtractMetadata(data_table_id=1)
-
-        with pytest.raises(ValueError):
-            extract._get_table_level_metadata()
-
-    def test_get_table_level_metadata_table_size_larger_than_0(self):
-        self.engine.execute("""
-            INSERT INTO metabase.data_table (data_table_id, file_table_name)
-                VALUES (1, 'data.table_test_size');
-
-            ALTER TABLE data.table_test_size ADD c1 INT PRIMARY KEY;
-
-            INSERT INTO data.table_test_size (c1) VALUES (1);
-        """)
-
-        with patch('metabase.extract_metadata.settings', self.mock_params):
-            extract = extract_metadata.ExtractMetadata(data_table_id=1)
-
-        extract._get_table_level_metadata()
-
-        self.engine.execute('DROP TABLE data.table_test_size;')
-
-        result = self.engine.execute("""
-            SELECT size
-            FROM metabase.data_table
-            WHERE data_table_id = 1
-        """).fetchall()
-
-        result_table_size = result[0][0]
-
-        assert 8192 == result_table_size
 
     def test_get_table_level_metadata_updated_by_user_name_not_empty(self):
         self.engine.execute("""

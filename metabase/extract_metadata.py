@@ -188,8 +188,7 @@ class ExtractMetadata():
     def __get_column_type(self, col, categorical_threshold):
         """Identify or infer column type.
 
-        Uses the type set in the database if available. If all columns are
-        text, attempts to infer the column type.
+        Infers the column type.
 
         Returns:
           str: 'numeric', 'text', 'date' or 'code'

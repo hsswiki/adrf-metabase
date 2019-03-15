@@ -143,10 +143,6 @@ def is_code(data_cursor, col, schema_name, table_name,
 def update_numeric(data_cursor, metabase_cursor, col, data_table_id):
     """Update Column Info  and Numeric Column for a numerical column."""
 
-    # TODO this needs to be split into two functions, one that uses the data
-    # cursor and one that uses metabase cursor to support data stored in a
-    # second database.
-
     update_column_info(metabase_cursor, col, data_table_id, 'numeric')
     # Update created by, created date.
 
@@ -214,7 +210,7 @@ def update_text(data_cursor, metabase_cursor, col, data_table_id):
     # Update created by, created date.
 
     (max_len, min_len, median_len) = get_text_metadata(data_cursor, col, data_table_id)
-    
+
     metabase_cursor.execute(
         """
         INSERT INTO metabase.text_column
@@ -273,7 +269,7 @@ def get_text_metadata(data_cursor, col, data_table_id):
         FROM text_length;
         """
     )
-    
+
     (max_len, min_len, median_len) = data_cursor.fetchall()[0]
 
     data_cursor.execute("DROP TABLE text_length")
@@ -283,13 +279,53 @@ def get_text_metadata(data_cursor, col, data_table_id):
 def update_date(data_cursor, metabase_cursor, col, data_table_id):
     """Update Column Info and Date Column for a date column."""
 
-    pass
+    update_column_info(metabase_cursor, col, data_table_id, 'date')
 
-def get_data_metadata(data_cursor, col, data_table_id):
+    (minimum, maximum) = get_date_metadata(data_cursor, col, data_table_id)
+
+    metabase_cursor.execute(
+        """
+        INSERT INTO metabase.date_column
+        (
+        data_table_id,
+        column_name,
+        min_date,
+        max_date,
+        updated_by,
+        date_last_updated
+        )
+        VALUES
+        (
+        %(data_table_id)s,
+        %(column_name)s,
+        %(min_date)s,
+        %(max_date)s,
+        %(updated_by)s,
+        (SELECT CURRENT_TIMESTAMP)
+        )
+        """,
+        {
+            'data_table_id': data_table_id,
+            'column_name': col,
+            'min_date': minimum,
+            'max_date': maximum,
+            'updated_by': getpass.getuser(),
+        }
+        )
+
+def get_date_metadata(data_cursor, col, data_table_id):
     """Get metadata from a date column."""
 
-    pass
+    data_cursor.execute(
+        """
+        SELECT
+        min(data_col),
+        max(data_col)
+        FROM converted_data
+        """
+    )
 
+    return data_cursor.fetchall()[0]
 
 def update_column_info(cursor, col, data_table_id, data_type):
     """Add a row for this data column to the column info metadata table."""

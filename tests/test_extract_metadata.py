@@ -435,7 +435,7 @@ class ExtractMetadataTest(unittest.TestCase):
             "SELECT * FROM metabase.column_info"
         ).fetchall()
 
-        assert 2 == len(results)
+        assert 3 == len(results)
 
     def test_get_column_level_metadata_numeric(self):
         """Test extracting numeric column level metadata."""
@@ -445,13 +445,13 @@ class ExtractMetadataTest(unittest.TestCase):
            VALUES (1, 'data.table_1');
 
            CREATE TABLE data.table_1
-               (c_num INT, c_text TEXT, c_code TEXT, c_date DATE);
+               (c_num INT);
 
-           INSERT INTO data.table_1 (c_num, c_text, c_code, c_date)
+           INSERT INTO data.table_1 (c_num)
            VALUES
-           (1, 'a', 'x', '2018-01-01'),
-           (2, 'a', 'y', '2018-02-01'),
-           (3, 'c', 'z', '2018-03-02');
+           (1),
+           (2),
+           (3);
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
@@ -490,14 +490,13 @@ class ExtractMetadataTest(unittest.TestCase):
            INSERT INTO metabase.data_table (data_table_id, file_table_name)
            VALUES (1, 'data.table_1');
 
-           CREATE TABLE data.table_1
-               (c_num INT, c_text TEXT, c_code TEXT, c_date DATE);
+           CREATE TABLE data.table_1 (c_text TEXT);
 
-           INSERT INTO data.table_1 (c_num, c_text, c_code, c_date)
+           INSERT INTO data.table_1 (c_text)
            VALUES
-           (1, 'abc', 'x', '2018-01-01'),
-           (2, 'efgh', 'y', '2018-02-01'),
-           (3, 'ijklm', 'z', '2018-03-02');
+           ('abc'),
+           ('efgh'),
+           ('ijklm');
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
@@ -519,8 +518,6 @@ class ExtractMetadataTest(unittest.TestCase):
             """
         ).fetchall()[0]
 
-        print(results)
-
         assert results[0] == 1
         assert results[1] == 'c_text' 
         assert results[2] == 5
@@ -529,7 +526,47 @@ class ExtractMetadataTest(unittest.TestCase):
         assert isinstance(results[5], str)
         assert isinstance(results[6], datetime.datetime)
 
-    
-        
+
+    def test_get_column_level_metadata_date(self):
+        """Test extracting date column level metadata."""
+
+        self.engine.execute("""
+           INSERT INTO metabase.data_table (data_table_id, file_table_name)
+           VALUES (1, 'data.table_1');
+
+           CREATE TABLE data.table_1
+               (c_date DATE);
+
+           INSERT INTO data.table_1 ( c_date)
+           VALUES
+           ('2018-01-01'),
+           ('2018-02-01'),
+           ('2018-03-02');
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_column_level_metadata(categorical_threshold=2)
+
+        # Check date results.
+        results = self.engine.execute("""
+            SELECT
+            data_table_id,
+            column_name,
+            min_date,
+            max_date,
+            updated_by,
+            date_last_updated
+            FROM metabase.date_column
+            """
+        ).fetchall()[0]
+
+        assert results[0] == 1
+        assert results[1] == 'c_date' 
+        assert results[2] == datetime.date(2018, 1, 1)
+        assert results[3] == datetime.date(2018, 3, 2)
+        assert isinstance(results[4], str)
+        assert isinstance(results[5], datetime.datetime)
 
 

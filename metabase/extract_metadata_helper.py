@@ -19,8 +19,9 @@ def get_column_type(data_cursor, col, categorical_threshold, schema_name,
                  categorical_threshold):
         return 'code'
     else:
-        # is_code creates a column in metadata.temp with type text and the a
-        # copy of col. is_copy must be run before assigning type as text.
+        # is_code creates a column in the temporary table
+        # metadata.converted_data with type text and the a copy of col. is_copy
+        # must be run before assigning type as text.
         return 'text'
 
 
@@ -28,7 +29,7 @@ def is_numeric(data_cursor, col, schema_name, table_name):
     """Return True if column is numeric.
 
     Return True if column is numeric. Converts text column to numeric and
-    stores it in metabase.temp.
+    stores it in temporary table metabase.converted_data.
 
     """
 
@@ -62,7 +63,7 @@ def is_date(data_cursor, col, schema_name, table_name):
     """Return True if column is date.
 
     Return True if column is type date. Converts text column to date and stores
-    it in metabase.temp.
+    it in temporary table metabase.converted_data.
 
     """
 
@@ -98,9 +99,9 @@ def is_code(data_cursor, col, schema_name, table_name,
     """Return True if column is categorical.
 
     Return True if column categorical. Stores a copy of the column in
-    metabase.temp. Note: Even if the column is not categorical, the column is
-    copied to metadata.temp as a text column and the column will be assumed to
-    be text.
+    metabase.converted_data. Note: Even if the column is not categorical, the
+    column is copied to metadata.converted_metadata as a text column and the
+    column will be assumed to be text.
 
     """
 

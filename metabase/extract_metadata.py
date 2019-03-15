@@ -173,13 +173,17 @@ class ExtractMetadata():
             {'data_table_id': self.data_table_id},
         )
 
-        try:
-            schema_name, table_name = self.metabase_cur.fetchone(
-                )[0].split('.')
-        except TypeError:
-            raise ValueError('data_table_id not found in DataTable')
+        result = self.metabase_cur.fetchone()
 
-        return schema_name, table_name
+        if result is None:
+            raise ValueError('data_table_id not found in metabase.data_table')
+
+        schema_name_table_name_tp = result[0].split('.')
+        if len(schema_name_table_name_tp) != 2:
+            raise ValueError('file_table_name is not in <schema>.<table> '
+                             'format')
+
+        return schema_name_table_name_tp
 
     def __get_column_type(self, col, categorical_threshold):
         """Identify or infer column type.

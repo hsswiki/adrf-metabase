@@ -101,13 +101,33 @@ class ExtractMetadataTest(unittest.TestCase):
         result = conn.execute(row_count).fetchall()
         self.assertEqual(123, result[0][0])
 
-    def test_get_table_name_no_data_table(self):
+    def test_get_table_name_data_table_id_not_found(self):
         """
         Test the validity of `data_table_id` as an argument to the constructor
         of ExtractMetadata.
         """
         with pytest.raises(ValueError):
             # Will raise error since `metabase.data_table` is empty
+            with patch('metabase.extract_metadata.settings', self.mock_params):
+                extract_metadata.ExtractMetadata(data_table_id=1)
+
+    def test_get_table_name_file_table_name_not_splitable(self):
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'unqualified_table_name');
+        """)
+
+        with pytest.raises(ValueError):
+            with patch('metabase.extract_metadata.settings', self.mock_params):
+                extract_metadata.ExtractMetadata(data_table_id=1)
+
+    def test_get_table_name_file_table_name_contain_extra_dot(self):
+        self.engine.execute("""
+            INSERT INTO metabase.data_table (data_table_id, file_table_name)
+                VALUES (1, 'lots.of.dots');
+        """)
+
+        with pytest.raises(ValueError):
             with patch('metabase.extract_metadata.settings', self.mock_params):
                 extract_metadata.ExtractMetadata(data_table_id=1)
 

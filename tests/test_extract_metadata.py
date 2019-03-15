@@ -372,9 +372,9 @@ class ExtractMetadataTest(unittest.TestCase):
 
            INSERT INTO data.table_1 (c_num, c_text, c_code, c_date)
            VALUES
-           (1, 'a', 'x', '2018-01-01'),
-           (2, 'a', 'y', '2018-02-01'),
-           (3, 'c', 'z', '2018-03-02');
+           (1, 'text_1', 'code_1', '2018-01-01'),
+           (2, 'text_2', 'code_1', '2018-02-01'),
+           (3, 'text_3', 'code_2', '2018-03-02');
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
@@ -387,7 +387,7 @@ class ExtractMetadataTest(unittest.TestCase):
             "SELECT * FROM metabase.column_info"
         ).fetchall()
 
-        assert 3 == len(results)
+        assert 4 == len(results)
 
     def test_get_column_level_metadata_numeric(self):
         """Test extracting numeric column level metadata."""
@@ -478,7 +478,6 @@ class ExtractMetadataTest(unittest.TestCase):
         assert isinstance(results[5], str)
         assert isinstance(results[6], datetime.datetime)
 
-
     def test_get_column_level_metadata_date(self):
         """Test extracting date column level metadata."""
 
@@ -521,4 +520,49 @@ class ExtractMetadataTest(unittest.TestCase):
         assert isinstance(results[4], str)
         assert isinstance(results[5], datetime.datetime)
 
+    def test_get_column_level_metadata_code(self):
+        """Test extracting code column level metadata."""
+
+        self.engine.execute("""
+           INSERT INTO metabase.data_table (data_table_id, file_table_name)
+           VALUES (1, 'data.table_1');
+
+           CREATE TABLE data.table_1 (c_code TEXT);
+
+           INSERT INTO data.table_1 (c_code)
+            VALUES
+                ('M'),
+                ('F'),
+                ('F');
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_column_level_metadata(categorical_threshold=2)
+
+        results = self.engine.execute("""
+            SELECT
+                data_table_id,
+                column_name,
+                code,
+                frequency,
+                updated_by,
+                date_last_updated
+            FROM metabase.code_frequency
+        """).fetchall()
+
+        assert results[0][0] == 1
+        assert results[0][1] == 'c_code' 
+        assert results[0][2] == 'F'
+        assert results[0][3] == 2
+        assert isinstance(results[0][4], str)
+        assert isinstance(results[0][5], datetime.datetime)
+
+        assert results[1][0] == 1
+        assert results[1][1] == 'c_code' 
+        assert results[1][2] == 'M'
+        assert results[1][3] == 1
+        assert isinstance(results[1][4], str)
+        assert isinstance(results[1][5], datetime.datetime)
 

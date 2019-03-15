@@ -257,8 +257,6 @@ def get_text_metadata(data_cursor, col, data_table_id):
         """
     )
 
-    data_cursor.execute("SELECT * FROM converted_data")
-
     data_cursor.execute(
         """
         SELECT
@@ -327,6 +325,64 @@ def get_date_metadata(data_cursor, col, data_table_id):
 
     return data_cursor.fetchall()[0]
 
+
+def update_code(data_cursor, metabase_cursor, col, data_table_id):
+    """Update Column Info and Code Frequency for a categorical column."""
+
+    update_column_info(metabase_cursor, col, data_table_id, 'code')
+
+    code_freq_tp_ls = get_code_metadata(data_cursor, col, data_table_id)
+
+    metabase_cursor.execute(
+        'CREATE TEMPORARY TABLE code_freq_temp (code TEXT, freq INT);')
+    
+    for code, freq in code_freq_tp_ls:
+        metabase_cursor.execute(
+            'INSERT INTO code_freq_temp (code, freq) VALUES (%s, %s);',
+            [code, freq],
+        )
+
+    metabase_cursor.execute(
+        """
+        INSERT INTO metabase.code_frequency (
+            data_table_id,
+            column_name,
+            code,
+            frequency,
+            updated_by,
+            date_last_updated
+        ) SELECT 
+            %(data_table_id)s,
+            %(column_name)s,
+            code,
+            freq,
+            %(updated_by)s,
+            CURRENT_TIMESTAMP
+        FROM code_freq_temp;
+        """,
+        {
+            'data_table_id': data_table_id,
+            'column_name': col,
+            'updated_by': getpass.getuser(),
+        },
+    )
+
+    metabase_cursor.execute('DROP TABLE code_freq_temp;')
+
+def get_code_metadata(data_cursor, col, data_table_id):
+    data_cursor.execute(
+        """
+        SELECT data_col AS code, COUNT(*) AS frequency
+        FROM converted_data
+        GROUP BY data_col
+        ORDER BY data_col;
+        """
+    )
+    code_frequency_tp_ls = data_cursor.fetchall()
+
+    return code_frequency_tp_ls
+
+
 def update_column_info(cursor, col, data_table_id, data_type):
     """Add a row for this data column to the column info metadata table."""
 
@@ -358,3 +414,5 @@ def update_column_info(cursor, col, data_table_id, data_type):
             'updated_by': getpass.getuser(),
         }
     )
+
+

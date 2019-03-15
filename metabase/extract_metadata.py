@@ -248,7 +248,6 @@ class ExtractMetadata():
             col,
             self.data_table_id,
         )
-        pass
 
     def __update_code_metadata(self, col):
         """Extract metadata from a categorial column.
@@ -257,6 +256,11 @@ class ExtractMetadata():
         Info and Code Frequency. Update relevant audit fields.
 
         """
-
         # TODO: modify categorical_threshold to take percentage arguments.
-        pass
+
+        extract_metadata_helper.update_code(
+            self.data_cur,
+            self.metabase_cur,
+            col,
+            self.data_table_id,
+        )

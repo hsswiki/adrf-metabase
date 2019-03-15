@@ -15,12 +15,14 @@ def get_column_type(data_cursor, col, categorical_threshold, schema_name,
         return 'numeric'
     elif is_date(data_cursor, col, schema_name, table_name):
         return 'date'
-    elif is_code(data_cursor, col, schema_name, table_name, categorical_threshold):
+    elif is_code(data_cursor, col, schema_name, table_name,
+                 categorical_threshold):
         return 'code'
     else:
         # is_code creates a column in metadata.temp with type text and the a
         # copy of col. is_copy must be run before assigning type as text.
         return 'text'
+
 
 def is_numeric(data_cursor, col, schema_name, table_name):
     """Return True if column is numeric.
@@ -86,7 +88,7 @@ def is_date(data_cursor, col, schema_name, table_name):
             )
         )
         return True
-    except (psycopg2.ProgrammingError, psycopg2.DataError) as e:
+    except (psycopg2.ProgrammingError, psycopg2.DataError):
         data_cursor.execute("DROP TABLE IF EXISTS converted_data")
         return False
 
@@ -146,7 +148,8 @@ def update_numeric(data_cursor, metabase_cursor, col, data_table_id):
     update_column_info(metabase_cursor, col, data_table_id, 'numeric')
     # Update created by, created date.
 
-    (minimum, maximum, mean, median) = get_numeric_metadata(data_cursor, col, data_table_id)
+    (minimum, maximum, mean, median) = get_numeric_metadata(data_cursor, col,
+                                                            data_table_id)
 
     metabase_cursor.execute(
         """
@@ -184,9 +187,9 @@ def update_numeric(data_cursor, metabase_cursor, col, data_table_id):
         }
     )
 
+
 def get_numeric_metadata(data_cursor, col, data_table_id):
     """Get metdata from a numeric column."""
-
 
     data_cursor.execute(
         """
@@ -209,7 +212,8 @@ def update_text(data_cursor, metabase_cursor, col, data_table_id):
     update_column_info(metabase_cursor, col, data_table_id, 'text')
     # Update created by, created date.
 
-    (max_len, min_len, median_len) = get_text_metadata(data_cursor, col, data_table_id)
+    (max_len, min_len, median_len) = get_text_metadata(data_cursor, col,
+                                                       data_table_id)
 
     metabase_cursor.execute(
         """
@@ -244,6 +248,7 @@ def update_text(data_cursor, metabase_cursor, col, data_table_id):
         }
     )
 
+
 def get_text_metadata(data_cursor, col, data_table_id):
     """Get metadata from a text column."""
 
@@ -273,6 +278,7 @@ def get_text_metadata(data_cursor, col, data_table_id):
     data_cursor.execute("DROP TABLE text_length")
 
     return (max_len, min_len, median_len)
+
 
 def update_date(data_cursor, metabase_cursor, col, data_table_id):
     """Update Column Info and Date Column for a date column."""
@@ -311,6 +317,7 @@ def update_date(data_cursor, metabase_cursor, col, data_table_id):
         }
         )
 
+
 def get_date_metadata(data_cursor, col, data_table_id):
     """Get metadata from a date column."""
 
@@ -335,7 +342,7 @@ def update_code(data_cursor, metabase_cursor, col, data_table_id):
 
     metabase_cursor.execute(
         'CREATE TEMPORARY TABLE code_freq_temp (code TEXT, freq INT);')
-    
+
     for code, freq in code_freq_tp_ls:
         metabase_cursor.execute(
             'INSERT INTO code_freq_temp (code, freq) VALUES (%s, %s);',
@@ -351,7 +358,7 @@ def update_code(data_cursor, metabase_cursor, col, data_table_id):
             frequency,
             updated_by,
             date_last_updated
-        ) SELECT 
+        ) SELECT
             %(data_table_id)s,
             %(column_name)s,
             code,
@@ -368,6 +375,7 @@ def update_code(data_cursor, metabase_cursor, col, data_table_id):
     )
 
     metabase_cursor.execute('DROP TABLE code_freq_temp;')
+
 
 def get_code_metadata(data_cursor, col, data_table_id):
     data_cursor.execute(
@@ -414,5 +422,3 @@ def update_column_info(cursor, col, data_table_id, data_type):
             'updated_by': getpass.getuser(),
         }
     )
-
-

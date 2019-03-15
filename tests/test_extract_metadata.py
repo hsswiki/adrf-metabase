@@ -423,15 +423,14 @@ class ExtractMetadataTest(unittest.TestCase):
             updated_by,
             date_last_updated
             FROM metabase.numeric_column
-            """
-        ).fetchall()[0]
+        """).fetchall()[0]
 
         assert results[0] == 1
-        assert results[1] == 'c_num' 
+        assert results[1] == 'c_num'
         assert results[2] == 1
         assert results[3] == 3
         assert results[4] == 2
-        assert results[5] == 2 
+        assert results[5] == 2
         assert isinstance(results[6], str)
         assert isinstance(results[7], datetime.datetime)
 
@@ -467,11 +466,10 @@ class ExtractMetadataTest(unittest.TestCase):
             updated_by,
             date_last_updated
             FROM metabase.text_column
-            """
-        ).fetchall()[0]
+        """).fetchall()[0]
 
         assert results[0] == 1
-        assert results[1] == 'c_text' 
+        assert results[1] == 'c_text'
         assert results[2] == 5
         assert results[3] == 3
         assert results[4] == 4
@@ -510,11 +508,10 @@ class ExtractMetadataTest(unittest.TestCase):
             updated_by,
             date_last_updated
             FROM metabase.date_column
-            """
-        ).fetchall()[0]
+        """).fetchall()[0]
 
         assert results[0] == 1
-        assert results[1] == 'c_date' 
+        assert results[1] == 'c_date'
         assert results[2] == datetime.date(2018, 1, 1)
         assert results[3] == datetime.date(2018, 3, 2)
         assert isinstance(results[4], str)
@@ -553,16 +550,15 @@ class ExtractMetadataTest(unittest.TestCase):
         """).fetchall()
 
         assert results[0][0] == 1
-        assert results[0][1] == 'c_code' 
+        assert results[0][1] == 'c_code'
         assert results[0][2] == 'F'
         assert results[0][3] == 2
         assert isinstance(results[0][4], str)
         assert isinstance(results[0][5], datetime.datetime)
 
         assert results[1][0] == 1
-        assert results[1][1] == 'c_code' 
+        assert results[1][1] == 'c_code'
         assert results[1][2] == 'M'
         assert results[1][3] == 1
         assert isinstance(results[1][4], str)
         assert isinstance(results[1][5], datetime.datetime)
-

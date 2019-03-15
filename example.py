@@ -1,5 +1,8 @@
 """Example script for extracting metadata from a table.
 
+This script requires ``pandas`` package being installed and ``metabase`` schema
+being established. The latter can be done with ``alembic upgrade head``.
+
 This script includes some set up to handle the data receipt part of the
 metabase that has not be implemented yet including loading a csv file into a
 table in PostgreSQL and updating metabase.data_table with a new data_table_id
@@ -28,9 +31,12 @@ from metabase import extract_metadata
 # Change here.
 ############################################
 file_name = 'data.csv'
-table_name = 'public.example'  # Must specify a schema.
+schema_name = 'public'    # Must specify a schema.
+table_name = 'example'
 categorical_threshold = 5
 ############################################
+
+full_table_name = schema_name + '.' + table_name
 
 # Create a text only table in the data base data.example.
 data = pd.read_csv(file_name)
@@ -46,7 +52,7 @@ if max_id is None:
     new_id = 1
 else:
     new_id = max_id + 1
-print("data_table_id is {} for table {}".format(new_id, table_name))
+print("data_table_id is {} for table {}".format(new_id, full_table_name))
 
 engine.execute(
     """
@@ -63,7 +69,7 @@ engine.execute(
     """,
     {
         'data_table_id': new_id,
-        'file_table_name': table_name
+        'file_table_name': full_table_name
     }
 )
 

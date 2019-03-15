@@ -4,14 +4,11 @@ ADRF Metabase
 
 Tools for handling metadata associated with administrative data sets.
 
-The current version of this repo contains scripts for creating the Metabase
-tabels.
-
 --------------
 Requirements
 --------------
 
-- Postgres version 9.5
+- PostgreSQL 9.5
 
 - Python 3.5
 
@@ -21,18 +18,30 @@ Requirements
 Prepare the database
 -----------------------
 
-Create super user `metaadmin` and store credentials in .pgpass file.
+Create superuser ``metaadmin`` and store credentials in ``.pgpass`` file.
 
-Create schema `metabase`
+Grant ``metaadmin`` login privilege.
+
+Create schema ``metabase``.
+
+Sample codes::
+
+    CREATE ROLE metaadmin WITH LOGIN SUPERUSER;
+
+    CREATE SCHEMA metabase;
 
 ------------------------
 Run migration script
 ------------------------
 
 Currently there is only one version of the database. You can create all the
-tables by running:
+tables by running::
 
-``alembic upgrade head``
+    alembic upgrade head
+
+To revert the migration, run::
+
+    alembic downgrade base
 
 -----------
 Run Tests
@@ -42,6 +51,24 @@ Tests require `testing.postgresql <https://github.com/tk0miya/testing.postgresql
 
 ``pip install testing.postgresql``
 
-Run tests with the following command under the root directory of the project
+Run tests with the following command under the root directory of the project::
 
-``pytest tests/``
+    pytest tests/
+
+----------
+Build docs
+----------
+
+Under the ``./docs/`` directory, run::
+
+    sphinx-apidoc -o source/ ../metabase --force --separate
+
+    make html
+
+------------
+Run coverage
+------------
+
+Under project root directory, run::
+
+    pytest --cov=metabase tests --cov-report html

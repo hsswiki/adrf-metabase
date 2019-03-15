@@ -11,20 +11,15 @@ def get_column_type(data_cursor, col, categorical_threshold, schema_name,
                     table_name):
     """Return the column type."""
 
-    print(col)
     if is_numeric(data_cursor, col, schema_name, table_name):
-        print('numeric column')
         return 'numeric'
     elif is_date(data_cursor, col, schema_name, table_name):
-        print('date')
         return 'date'
     elif is_code(data_cursor, col, schema_name, table_name, categorical_threshold):
-        print('code')
         return 'code'
     else:
         # is_code creates a column in metadata.temp with type text and the a
         # copy of col. is_copy must be run before assigning type as text.
-        print('text')
         return 'text'
 
 def is_numeric(data_cursor, col, schema_name, table_name):
@@ -74,7 +69,8 @@ def is_date(data_cursor, col, schema_name, table_name):
         """
         CREATE TEMPORARY TABLE IF NOT EXISTS
         converted_data
-        (data_col DATE)
+        (data_col DATE);
+        TRUNCATE TABLE converted_data;
         """
     )
 
@@ -111,7 +107,8 @@ def is_code(data_cursor, col, schema_name, table_name,
         """
         CREATE TEMPORARY TABLE IF NOT EXISTS
         converted_data
-        (data_col TEXT)
+        (data_col TEXT);
+        TRUNCATE TABLE converted_data;
         """
     )
 
@@ -127,8 +124,7 @@ def is_code(data_cursor, col, schema_name, table_name,
     )
     n_distinct = data_cursor.fetchall()[0][0]
 
-    if n_distinct <= categorical_threshold:
-        data_cursor.execute(sql.SQL("""
+    data_cursor.execute(sql.SQL("""
         INSERT INTO converted_data (data_col)
         SELECT {} FROM {}.{}
         """).format(
@@ -137,6 +133,8 @@ def is_code(data_cursor, col, schema_name, table_name,
                 sql.Identifier(table_name),
         )
         )
+
+    if n_distinct <= categorical_threshold:
         return True
     else:
         return False
@@ -151,7 +149,6 @@ def update_numeric(data_cursor, metabase_cursor, col, data_table_id):
 
     update_column_info(metabase_cursor, col, data_table_id, 'numeric')
     # Update created by, created date.
-
 
     (minimum, maximum, mean, median) = get_numeric_metadata(data_cursor, col, data_table_id)
 
@@ -210,35 +207,89 @@ def get_numeric_metadata(data_cursor, col, data_table_id):
     return data_cursor.fetchall()[0]
 
 
-def update_text(cursor, col, data_table_id):
+def update_text(data_cursor, metabase_cursor, col, data_table_id):
     """Update Column Info  and Numeric Column for a numerical column."""
 
-# def get_text_metadata(data_cursor, col, data_table_):
-#     """Get metadata from a text column."""
+    update_column_info(metabase_cursor, col, data_table_id, 'text')
+    # Update created by, created date.
 
-#     # Create tempory table to hold text lengths.
-#     cursor.execute(
-#         """CREATE TEMPORARY TABLE text_length
-#         AS
-#         SELECT char_length(converted_data)
-#         FROM
-#         metabase.temp"""
-#     )
+    (max_len, min_len, median_len) = get_text_metadata(data_cursor, col, data_table_id)
+    
+    metabase_cursor.execute(
+        """
+        INSERT INTO metabase.text_column
+        (
+        data_table_id,
+        column_name,
+        max_length,
+        min_length,
+        median_length,
+        updated_by,
+        date_last_updated
+        )
+        VALUES
+        (
+        %(data_table_id)s,
+        %(column_name)s,
+        %(max_length)s,
+        %(min_length)s,
+        %(median_length)s,
+        %(updated_by)s,
+        (SELECT CURRENT_TIMESTAMP)
+        )
+        """,
+        {
+            'data_table_id': data_table_id,
+            'column_name': col,
+            'max_length': max_len,
+            'min_length': min_len,
+            'median_length': median_len,
+            'updated_by': getpass.getuser(),
+        }
+    )
 
-#     cursor.execute(
-#         """
-#         SELECT
-#         MAX(length),
-#         MIN(length),
-#         PERCENTILE_CONT(0.5)
-#             WITHIN GRUP (ORDER BY length)
-#         FROM text_length;
-#         """
-#     )
+def get_text_metadata(data_cursor, col, data_table_id):
+    """Get metadata from a text column."""
 
-#     (max_len, min_len, median_len) = cursor.fetchall()[0]
+    # Create tempory table to hold text lengths.
+    data_cursor.execute(
+        """
+        CREATE TEMPORARY TABLE text_length
+        AS
+        SELECT char_length(data_col)
+        FROM converted_data
+        """
+    )
 
-#     return (max_len, min_len, median_len)
+    data_cursor.execute("SELECT * FROM converted_data")
+
+    data_cursor.execute(
+        """
+        SELECT
+        MAX(text_length.char_length),
+        MIN(text_length.char_length),
+        PERCENTILE_CONT(0.5)
+            WITHIN GROUP (ORDER BY text_length.char_length)
+        FROM text_length;
+        """
+    )
+    
+    (max_len, min_len, median_len) = data_cursor.fetchall()[0]
+
+    data_cursor.execute("DROP TABLE text_length")
+
+    return (max_len, min_len, median_len)
+
+def update_date(data_cursor, metabase_cursor, col, data_table_id):
+    """Update Column Info and Date Column for a date column."""
+
+    pass
+
+def get_data_metadata(data_cursor, col, data_table_id):
+    """Get metadata from a date column."""
+
+    pass
+
 
 def update_column_info(cursor, col, data_table_id, data_type):
     """Add a row for this data column to the column info metadata table."""

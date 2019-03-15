@@ -217,7 +217,7 @@ class ExtractMetadata():
             self.data_cur,
             self.metabase_cur,
             col,
-            self.data_table_id
+            self.data_table_id,
         )
 
     def __update_text_metadata(self, col):
@@ -229,9 +229,10 @@ class ExtractMetadata():
         """
 
         extract_metadata_helper.update_text(
+            self.data_cur,
             self.metabase_cur,
             col,
-            self.data_table_id
+            self.data_table_id,
         )
 
     def __update_date_metadata(self, col):
@@ -242,7 +243,12 @@ class ExtractMetadata():
 
         """
 
-        # TODO
+        extract_metadata_helper.update_date(
+            self.data_cur,
+            self.metabase_cur,
+            col,
+            self.data_table_id,
+        )
         pass
 
     def __update_code_metadata(self, col):

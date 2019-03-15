@@ -31,7 +31,7 @@ from metabase import extract_metadata
 # Change here.
 ############################################
 file_name = 'data.csv'
-schema_name = 'public'    # Must specify a schema.
+schema_name = 'data'    # Must specify a schema.
 table_name = 'example'
 categorical_threshold = 5
 ############################################
@@ -42,7 +42,7 @@ full_table_name = schema_name + '.' + table_name
 data = pd.read_csv(file_name)
 engine = sqlalchemy.create_engine('postgres://metaadmin@localhost/postgres')
 conn = engine.connect()
-data.to_sql(table_name, conn, if_exists='replace', index=False)
+data.to_sql(table_name, conn, if_exists='replace', index=False, schema=schema_name)
 
 # Update meatabase.data_table with this new table.
 max_id = engine.execute(

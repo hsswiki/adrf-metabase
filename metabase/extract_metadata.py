@@ -22,8 +22,7 @@ class ExtractMetadata():
         self.data_table_id = data_table_id
 
         self.metabase_conn = psycopg2.connect(
-            settings.metabase_connection_string
-        )
+            settings.metabase_connection_string)
         self.metabase_conn.autocommit = True
         self.metabase_cur = self.metabase_conn.cursor()
 
@@ -105,6 +104,9 @@ class ExtractMetadata():
             }
         )
 
+        # TODO: Update create_by and date_created
+        # https://github.com/chapinhall/adrf-metabase/pull/8#discussion_r265339190
+
     def _get_column_level_metadata(self, categorical_threshold):
         """Extract column level metadata and store it in the metabase.
 
@@ -143,8 +145,8 @@ class ExtractMetadata():
                 AND table_name  = %(table)s;
                 """,
                 {
-                        'schema': self.schema_name,
-                        'table': self.table_name
+                    'schema': self.schema_name,
+                    'table': self.table_name
                 },
                 )
 
@@ -256,5 +258,5 @@ class ExtractMetadata():
 
         """
 
-        # TODO
+        # TODO: modify categorical_threshold to take percentage arguments.
         pass

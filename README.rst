@@ -64,11 +64,4 @@ Under the ``./docs/`` directory, run::
     sphinx-apidoc -o source/ ../metabase --force --separate
 
     make html
-
-------------
-Run coverage
-------------
-
-Under project root directory, run::
-
-    pytest --cov=metabase tests --cov-report html
+    

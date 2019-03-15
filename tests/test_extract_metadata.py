@@ -46,7 +46,7 @@ class ExtractMetadataTest(unittest.TestCase):
         alembic_cfg.set_main_option('sqlalchemy.url', conn_str)
         alembic.command.upgrade(alembic_cfg, 'head')
 
-        # TODO: Move database setup codes into each individual tests.
+        # TODO: Move database setup codes into fixtures.
         engine.execute('create table data.numeric_1 '
                        '(c1 int primary key, c2 numeric)')
         engine.execute('insert into data.numeric_1 values (1, 1.1)')
@@ -78,28 +78,10 @@ class ExtractMetadataTest(unittest.TestCase):
     def tearDown(self):
         self.engine.execute("TRUNCATE TABLE metabase.data_table CASCADE")
         self.engine.execute("TRUNCATE TABLE metabase.numeric_column CASCADE")
-        self.engine.execute("TRUNCATE TABLE metabase.numeric_column")
         self.engine.execute("TRUNCATE TABLE metabase.text_column")
         self.engine.execute("TRUNCATE TABLE metabase.date_column")
+        self.engine.execute("TRUNCATE TABLE metabase.code_frequency")
         self.engine.execute('DROP TABLE IF EXISTS data.table_1')
-
-    def _test_row_count(self):
-        """Test that the row count is correct"""
-
-        # TODO remove this line once the actual extract_metadata method is
-        # working.
-        self.engine.execute("""update metabase.data_table
-                               set number_rows = 123
-                               where data_table_id = 1""")
-
-        data_table = self.data_table
-        row_count = sqlalchemy.sql.expression.select(
-            columns=[sqlalchemy.text('number_rows')],
-            from_obj=data_table,
-        ).where(data_table.data_table_id == 1)
-        conn = self.engine.connect()
-        result = conn.execute(row_count).fetchall()
-        self.assertEqual(123, result[0][0])
 
     def test_get_table_name_data_table_id_not_found(self):
         """

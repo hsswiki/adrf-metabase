@@ -1,0 +1,8 @@
+number_col, text_col, date_col, categorical_col
+1,one,2018-01-01,M
+2,two,2018-02-01,M
+3,three,2018-03-01,M
+4,four,2018-04-01,F
+5,five,2018-05-01,F
+6,six,2018-06-01,F
+7,seven,2018-07-01,F

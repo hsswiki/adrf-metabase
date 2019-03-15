@@ -22,8 +22,7 @@ class ExtractMetadata():
         self.data_table_id = data_table_id
 
         self.metabase_conn = psycopg2.connect(
-            settings.metabase_connection_string
-        )
+            settings.metabase_connection_string)
         self.metabase_conn.autocommit = True
         self.metabase_cur = self.metabase_conn.cursor()
 
@@ -82,10 +81,7 @@ class ExtractMetadata():
 
         if n_rows == 0:
             raise ValueError('Selected data table has 0 rows.')
-        elif n_cols == 0:
-            raise ValueError('Selected data table has 0 columns.')
-        elif table_size == 0:
-            raise ValueError('The size of the selected data table is 0 byte.')
+            # This will also capture n_cols == 0 and size == 0.
 
         self.metabase_cur.execute(
             """
@@ -108,6 +104,9 @@ class ExtractMetadata():
             }
         )
 
+        # TODO: Update create_by and date_created
+        # https://github.com/chapinhall/adrf-metabase/pull/8#discussion_r265339190
+
     def _get_column_level_metadata(self, categorical_threshold):
         """Extract column level metadata and store it in the metabase.
 
@@ -123,13 +122,13 @@ class ExtractMetadata():
             if column_type == 'numeric':
                 self.__update_numeric_metadata(col)
             elif column_type == 'text':
-                self.__updatae_text_metadata(col)
+                self.__update_text_metadata(col)
             elif column_type == 'date':
                 self.__update_date_metadata(col)
             elif column_type == 'code':
                 self.__update_code_metadata(col)
             else:
-                raise ValueError('Unknow column type')
+                raise ValueError('Unknown column type')
 
     def __get_column_names(self):
         """Returns the names of the columns in the data table.
@@ -146,8 +145,8 @@ class ExtractMetadata():
                 AND table_name  = %(table)s;
                 """,
                 {
-                        'schema': self.schema_name,
-                        'table': self.table_name
+                    'schema': self.schema_name,
+                    'table': self.table_name
                 },
                 )
 
@@ -174,19 +173,22 @@ class ExtractMetadata():
             {'data_table_id': self.data_table_id},
         )
 
-        try:
-            schema_name, table_name = self.metabase_cur.fetchone(
-                )[0].split('.')
-        except TypeError:
-            raise ValueError('data_table_id not found in DataTable')
+        result = self.metabase_cur.fetchone()
 
-        return schema_name, table_name
+        if result is None:
+            raise ValueError('data_table_id not found in metabase.data_table')
+
+        schema_name_table_name_tp = result[0].split('.')
+        if len(schema_name_table_name_tp) != 2:
+            raise ValueError('file_table_name is not in <schema>.<table> '
+                             'format')
+
+        return schema_name_table_name_tp
 
     def __get_column_type(self, col, categorical_threshold):
         """Identify or infer column type.
 
-        Uses the type set in the database if avaible. If all columns are text,
-        attempts to infer the column type.
+        Infers the column type.
 
         Returns:
           str: 'numeric', 'text', 'date' or 'code'
@@ -214,9 +216,10 @@ class ExtractMetadata():
         """
 
         extract_metadata_helper.update_numeric(
+            self.data_cur,
             self.metabase_cur,
             col,
-            self.data_table_id
+            self.data_table_id,
         )
 
     def __update_text_metadata(self, col):
@@ -227,8 +230,12 @@ class ExtractMetadata():
 
         """
 
-        # TODO
-        pass
+        extract_metadata_helper.update_text(
+            self.data_cur,
+            self.metabase_cur,
+            col,
+            self.data_table_id,
+        )
 
     def __update_date_metadata(self, col):
         """Extract metadata from a date column.
@@ -238,8 +245,12 @@ class ExtractMetadata():
 
         """
 
-        # TODO
-        pass
+        extract_metadata_helper.update_date(
+            self.data_cur,
+            self.metabase_cur,
+            col,
+            self.data_table_id,
+        )
 
     def __update_code_metadata(self, col):
         """Extract metadata from a categorial column.
@@ -248,6 +259,11 @@ class ExtractMetadata():
         Info and Code Frequency. Update relevant audit fields.
 
         """
+        # TODO: modify categorical_threshold to take percentage arguments.
 
-        # TODO
-        pass
+        extract_metadata_helper.update_code(
+            self.data_cur,
+            self.metabase_cur,
+            col,
+            self.data_table_id,
+        )

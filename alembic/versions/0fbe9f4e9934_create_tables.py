@@ -598,9 +598,9 @@ def upgrade():
 
     # Create keys on code_frequency.
     op.create_primary_key(
-        'code_frequency_fk',
+        'code_frequency_pk',
         'code_frequency',
-        ['data_table_id', 'column_name'],
+        ['data_table_id', 'column_name', 'code'],
         schema=SCHEMA_NAME
     )
 

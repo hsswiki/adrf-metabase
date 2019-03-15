@@ -7,6 +7,7 @@ Submodules
 .. toctree::
 
    metabase.extract_metadata
+   metabase.extract_metadata_helper
    metabase.settings
 
 Module contents

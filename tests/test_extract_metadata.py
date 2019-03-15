@@ -76,17 +76,12 @@ class ExtractMetadataTest(unittest.TestCase):
         cls.postgresql.stop()
 
     def tearDown(self):
-        self.engine.execute("""TRUNCATE TABLE metabase.data_table CASCADE;""")
-
-    def _test_process_empty_table(self):
-        """Right now, a call to process_table just raises an error.
-
-        As the library develops, we should overwrite this test.
-
-        """
-        # TODO
-        with self.assertRaises(ValueError):
-            self.extract.process_table()
+        self.engine.execute("TRUNCATE TABLE metabase.data_table CASCADE")
+        self.engine.execute("TRUNCATE TABLE metabase.numeric_column CASCADE")
+        self.engine.execute("TRUNCATE TABLE metabase.numeric_column")
+        self.engine.execute("TRUNCATE TABLE metabase.text_column")
+        self.engine.execute("TRUNCATE TABLE metabase.date_column")
+        self.engine.execute('DROP TABLE IF EXISTS data.table_1')
 
     def _test_row_count(self):
         """Test that the row count is correct"""
@@ -365,21 +360,165 @@ class ExtractMetadataTest(unittest.TestCase):
 
         assert isinstance(result_date_last_updated, datetime.datetime)
 
-    def test_get_column_level_metadata(self):
+    def test_get_column_level_metadata__column_info(self):
+        """Test extracting column level metadata into Column Info table."""
+
         self.engine.execute("""
            INSERT INTO metabase.data_table (data_table_id, file_table_name)
            VALUES (1, 'data.table_1');
 
-           CREATE TABLE data.table_1 (c1 INT, c2 TEXT, c3 DATE);
+           CREATE TABLE data.table_1
+               (c_num INT, c_text TEXT, c_code TEXT, c_date DATE);
 
-           INSERT INTO data.table_1 (c1, c2, c3)
+           INSERT INTO data.table_1 (c_num, c_text, c_code, c_date)
            VALUES
-           (1, 'a', '2018-01-01'),
-           (2, 'b', '2018-02-01'),
-           (3, 'c', '2018-03-02');
+           (1, 'a', 'x', '2018-01-01'),
+           (2, 'a', 'y', '2018-02-01'),
+           (3, 'c', 'z', '2018-03-02');
         """)
 
         with patch('metabase.extract_metadata.settings', self.mock_params):
             extract = extract_metadata.ExtractMetadata(data_table_id=1)
 
-        extract._get_column_level_metadata(categorical_threshold=10)
+        extract._get_column_level_metadata(categorical_threshold=2)
+
+        # Check column info retuls.
+        results = self.engine.execute(
+            "SELECT * FROM metabase.column_info"
+        ).fetchall()
+
+        assert 3 == len(results)
+
+    def test_get_column_level_metadata_numeric(self):
+        """Test extracting numeric column level metadata."""
+
+        self.engine.execute("""
+           INSERT INTO metabase.data_table (data_table_id, file_table_name)
+           VALUES (1, 'data.table_1');
+
+           CREATE TABLE data.table_1
+               (c_num INT);
+
+           INSERT INTO data.table_1 (c_num)
+           VALUES
+           (1),
+           (2),
+           (3);
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_column_level_metadata(categorical_threshold=2)
+
+        # Check Numeric results.
+        results = self.engine.execute("""
+            SELECT
+            data_table_id,
+            column_name,
+            minimum,
+            maximum,
+            mean,
+            median,
+            updated_by,
+            date_last_updated
+            FROM metabase.numeric_column
+            """
+        ).fetchall()[0]
+
+        assert results[0] == 1
+        assert results[1] == 'c_num' 
+        assert results[2] == 1
+        assert results[3] == 3
+        assert results[4] == 2
+        assert results[5] == 2 
+        assert isinstance(results[6], str)
+        assert isinstance(results[7], datetime.datetime)
+
+    def test_get_column_level_metadata_text(self):
+        """Test extracting text column level metadata."""
+
+        self.engine.execute("""
+           INSERT INTO metabase.data_table (data_table_id, file_table_name)
+           VALUES (1, 'data.table_1');
+
+           CREATE TABLE data.table_1 (c_text TEXT);
+
+           INSERT INTO data.table_1 (c_text)
+           VALUES
+           ('abc'),
+           ('efgh'),
+           ('ijklm');
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_column_level_metadata(categorical_threshold=2)
+
+        # Check date results.
+        results = self.engine.execute("""
+            SELECT
+            data_table_id,
+            column_name,
+            max_length,
+            min_length,
+            median_length,
+            updated_by,
+            date_last_updated
+            FROM metabase.text_column
+            """
+        ).fetchall()[0]
+
+        assert results[0] == 1
+        assert results[1] == 'c_text' 
+        assert results[2] == 5
+        assert results[3] == 3
+        assert results[4] == 4
+        assert isinstance(results[5], str)
+        assert isinstance(results[6], datetime.datetime)
+
+
+    def test_get_column_level_metadata_date(self):
+        """Test extracting date column level metadata."""
+
+        self.engine.execute("""
+           INSERT INTO metabase.data_table (data_table_id, file_table_name)
+           VALUES (1, 'data.table_1');
+
+           CREATE TABLE data.table_1
+               (c_date DATE);
+
+           INSERT INTO data.table_1 ( c_date)
+           VALUES
+           ('2018-01-01'),
+           ('2018-02-01'),
+           ('2018-03-02');
+        """)
+
+        with patch('metabase.extract_metadata.settings', self.mock_params):
+            extract = extract_metadata.ExtractMetadata(data_table_id=1)
+
+        extract._get_column_level_metadata(categorical_threshold=2)
+
+        # Check date results.
+        results = self.engine.execute("""
+            SELECT
+            data_table_id,
+            column_name,
+            min_date,
+            max_date,
+            updated_by,
+            date_last_updated
+            FROM metabase.date_column
+            """
+        ).fetchall()[0]
+
+        assert results[0] == 1
+        assert results[1] == 'c_date' 
+        assert results[2] == datetime.date(2018, 1, 1)
+        assert results[3] == datetime.date(2018, 3, 2)
+        assert isinstance(results[4], str)
+        assert isinstance(results[5], datetime.datetime)
+
+

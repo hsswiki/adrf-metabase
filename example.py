@@ -42,7 +42,11 @@ full_table_name = schema_name + '.' + table_name
 data = pd.read_csv(file_name)
 engine = sqlalchemy.create_engine('postgres://metaadmin@localhost/postgres')
 conn = engine.connect()
-data.to_sql(table_name, conn, if_exists='replace', index=False, schema=schema_name)
+data.to_sql(
+    table_name, conn,
+    if_exists='replace',
+    index=False,
+    schema=schema_name)
 
 # Update meatabase.data_table with this new table.
 max_id = engine.execute(
